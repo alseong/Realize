@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+There is a big problem for real estate investors trying to analyze deals on Realtor.ca. There is currently a lot of manual interventions to analyze deals on whether or not a property is a good deal. They need to copy and paste information from Realtor.ca into excel spread sheets and keep an unorganized list of deals in excel. 
+
+I want to build a google chrome browser plug in which can automatically detect key information from a page in Realtor.ca to calculate cashflow and other important investment metrics (this is an example: https://www.realestatespreadsheets.com/rental-property-calculator/)
