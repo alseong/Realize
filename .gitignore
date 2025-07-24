@@ -64,5 +64,4 @@ jspm_packages/
 # dotenv environment variables file
 .env
 
-# API keys and sensitive data
-src/background.ts
+
