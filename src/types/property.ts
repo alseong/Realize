@@ -18,9 +18,10 @@ export interface CashflowInputs {
   monthlyRent: number;
   propertyTaxes: number; // annual
   insurance: number; // annual
-  maintenance: number; // annual
-  propertyManagement: number; // annual
+  propertyManagement: number; // percentage of rent
+  maintenanceReserve: number; // percentage of rent
   vacancy: number; // percentage
+  capExReserve: number; // percentage of rent (capital expenditures)
   otherExpenses: number; // annual
 }
 
@@ -33,6 +34,17 @@ export interface CashflowResult {
   cashOnCashReturn: number; // percentage
   capRate: number; // percentage
   totalCashRequired: number;
+}
+
+export interface SavedCalculation {
+  id: string;
+  name: string;
+  address: string;
+  listingUrl?: string;
+  inputs: CashflowInputs;
+  results: CashflowResult;
+  savedAt: number; // timestamp
+  notes?: string;
 }
 
 export interface ChromeExtensionMessage {

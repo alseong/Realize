@@ -1,20 +1,30 @@
 {
   "manifest_version": 3,
-  "name": "Realtor.ca Cashflow Calculator",
-  "version": "1.0.0",
-  "description": "Automatically calculate cashflow for real estate investments from Realtor.ca listings",
-  "permissions": ["activeTab", "storage", "tabs"],
-  "host_permissions": ["*://*.realtor.ca/*", "https://www.realtor.ca/*"],
+  "name": "Universal AI Cashflow Calculator",
+  "version": "4.0.0",
+  "description": "Calculate cashflow for real estate investments from any website using AI-powered data extraction",
+  "permissions": ["activeTab", "storage", "tabs", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
   "content_scripts": [
     {
-      "matches": ["*://*.realtor.ca/*", "https://www.realtor.ca/*"],
+      "matches": ["<all_urls>"],
       "js": ["assets/content.js"],
       "run_at": "document_end"
     }
   ],
   "action": {
     "default_popup": "index.html",
-    "default_title": "Cashflow Calculator"
+    "default_title": "Universal AI Cashflow Calculator",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
   },
   "background": {
     "service_worker": "assets/background.js"

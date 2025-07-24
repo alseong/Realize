@@ -22,6 +22,7 @@ export const calculateMortgagePayment = (
 
 /**
  * Calculate comprehensive cashflow analysis for a rental property
+ * Formula: Monthly Cash Flow = Monthly Rental Income - Monthly Expenses
  */
 export const calculateCashflow = (inputs: CashflowInputs): CashflowResult => {
   const {
@@ -32,63 +33,82 @@ export const calculateCashflow = (inputs: CashflowInputs): CashflowResult => {
     monthlyRent,
     propertyTaxes,
     insurance,
-    maintenance,
     propertyManagement,
+    maintenanceReserve,
     vacancy,
+    capExReserve,
     otherExpenses,
   } = inputs;
 
   // Calculate loan amount
   const loanAmount = purchasePrice - downPayment;
 
-  // Calculate monthly mortgage payment
+  // Calculate monthly mortgage payment (principal + interest)
   const monthlyMortgage =
     loanAmount > 0
       ? calculateMortgagePayment(loanAmount, interestRate, loanTerm)
       : 0;
 
-  // Calculate monthly expenses
-  const monthlyPropertyTaxes = propertyTaxes / 12;
-  const monthlyInsurance = insurance / 12;
-  const monthlyMaintenance = maintenance / 12;
-  const monthlyPropertyManagement = propertyManagement / 12;
+  // Monthly Rental Income (gross rent)
+  const monthlyRentalIncome = monthlyRent;
+
+  // Calculate Monthly Expenses:
+  // 1. Mortgage payment (P&I)
+  // 2. Property taxes (already monthly)
+  const monthlyPropertyTaxes = propertyTaxes;
+  // 3. Insurance (already monthly)
+  const monthlyInsurance = insurance;
+  // 4. Property management (% of rent)
+  const monthlyPropertyManagement = monthlyRent * (propertyManagement / 100);
+  // 5. Maintenance reserve (% of rent)
+  const monthlyMaintenanceReserve = monthlyRent * (maintenanceReserve / 100);
+  // 6. Vacancy allowance (% of rent) - this reduces effective income
+  const monthlyVacancyAllowance = monthlyRent * (vacancy / 100);
+  // 7. Capital expenditure reserve (% of rent)
+  const monthlyCapExReserve = monthlyRent * (capExReserve / 100);
+  // 8. Other expenses (annual ÷ 12)
   const monthlyOtherExpenses = otherExpenses / 12;
 
+  // Total Monthly Expenses
   const monthlyExpenses =
     monthlyMortgage +
     monthlyPropertyTaxes +
     monthlyInsurance +
-    monthlyMaintenance +
     monthlyPropertyManagement +
+    monthlyMaintenanceReserve +
+    monthlyVacancyAllowance +
+    monthlyCapExReserve +
     monthlyOtherExpenses;
 
-  // Calculate effective monthly income (accounting for vacancy)
-  const effectiveMonthlyIncome = monthlyRent * (1 - vacancy / 100);
-
-  // Calculate monthly cashflow
-  const monthlyCashflow = effectiveMonthlyIncome - monthlyExpenses;
+  // Monthly Cash Flow = Monthly Rental Income - Monthly Expenses
+  const monthlyCashflow = monthlyRentalIncome - monthlyExpenses;
   const annualCashflow = monthlyCashflow * 12;
 
   // Calculate cash-on-cash return (annual cashflow / total cash invested)
-  const totalCashRequired = downPayment; // Could include closing costs, repairs, etc.
+  const totalCashRequired = downPayment;
   const cashOnCashReturn =
     totalCashRequired > 0 ? (annualCashflow / totalCashRequired) * 100 : 0;
 
   // Calculate cap rate (NOI / purchase price)
-  // NOI = rental income - operating expenses (excluding mortgage)
+  // NOI = rental income - operating expenses (excluding mortgage and vacancy)
   const annualOperatingExpenses =
-    propertyTaxes +
-    insurance +
-    maintenance +
-    propertyManagement +
-    otherExpenses;
-  const noi = monthlyRent * 12 * (1 - vacancy / 100) - annualOperatingExpenses;
+    propertyTaxes * 12 +
+    insurance * 12 +
+    monthlyPropertyManagement * 12 +
+    monthlyMaintenanceReserve * 12 +
+    monthlyCapExReserve * 12 +
+    otherExpenses * 12;
+
+  const grossAnnualIncome = monthlyRent * 12;
+  const effectiveAnnualIncome =
+    grossAnnualIncome - monthlyVacancyAllowance * 12;
+  const noi = effectiveAnnualIncome - annualOperatingExpenses;
   const capRate = purchasePrice > 0 ? (noi / purchasePrice) * 100 : 0;
 
   return {
     monthlyMortgage: Math.round(monthlyMortgage * 100) / 100,
     monthlyExpenses: Math.round(monthlyExpenses * 100) / 100,
-    monthlyIncome: Math.round(effectiveMonthlyIncome * 100) / 100,
+    monthlyIncome: Math.round(monthlyRentalIncome * 100) / 100,
     monthlyCashflow: Math.round(monthlyCashflow * 100) / 100,
     annualCashflow: Math.round(annualCashflow * 100) / 100,
     cashOnCashReturn: Math.round(cashOnCashReturn * 100) / 100,

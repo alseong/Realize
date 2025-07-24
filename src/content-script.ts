@@ -1,70 +1,188 @@
 import type { PropertyData, ChromeExtensionMessage } from "./types/property";
 
 // Build version identifier for verification
-const BUILD_VERSION = "v3.1.0 - Groq AI Analysis";
+const BUILD_VERSION = "v4.0.0 - Universal AI Analysis";
 console.log(`🏠 Realtor.ca Cashflow Extension loaded - ${BUILD_VERSION}`);
 console.log("📅 Build timestamp:", new Date().toISOString());
 
 /**
- * Extract full page HTML content for AI analysis (no visual disruption)
+ * Capture full page screenshot by scrolling and stitching (invisible to user)
  */
-const extractPageContent = (): string => {
+const captureFullPageScreenshot = async (): Promise<string | null> => {
   try {
-    console.log("📄 Extracting page content...");
+    console.log("📸 Starting silent full page screenshot capture...");
 
-    // Get the full HTML content
-    const htmlContent = document.documentElement.outerHTML;
+    // Save original scroll position
+    const originalScrollTop =
+      window.pageYOffset || document.documentElement.scrollTop;
+    const originalScrollLeft =
+      window.pageXOffset || document.documentElement.scrollLeft;
 
-    console.log("📄 HTML content length:", htmlContent.length);
-    console.log("📍 Current URL:", window.location.href);
+    // Get page dimensions
+    const documentHeight = Math.max(
+      document.body.scrollHeight,
+      document.body.offsetHeight,
+      document.documentElement.clientHeight,
+      document.documentElement.scrollHeight,
+      document.documentElement.offsetHeight
+    );
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
 
-    return htmlContent;
+    console.log(
+      `📏 Page dimensions: ${viewportWidth}x${documentHeight}, viewport: ${viewportWidth}x${viewportHeight}`
+    );
+
+    // If page fits in one viewport, use simple capture
+    if (documentHeight <= viewportHeight) {
+      console.log("📸 Page fits in viewport, using simple capture");
+      return new Promise((resolve) => {
+        chrome.runtime.sendMessage(
+          { type: "CAPTURE_SCREENSHOT" },
+          (response) => {
+            if (response?.dataUrl) {
+              resolve(response.dataUrl);
+            } else {
+              console.error("❌ Screenshot capture failed:", response?.error);
+              resolve(null);
+            }
+          }
+        );
+      });
+    }
+
+    // For long pages, capture multiple sections and stitch them
+    console.log("📸 Long page detected, capturing in sections...");
+
+    const capturedSections: string[] = [];
+    const sectionsToCapture = Math.min(
+      Math.ceil(documentHeight / viewportHeight),
+      5
+    ); // Limit to 5 sections max
+
+    console.log(`📸 Will capture ${sectionsToCapture} sections`);
+
+    // Disable smooth scrolling temporarily for instant positioning
+    const originalScrollBehavior =
+      document.documentElement.style.scrollBehavior;
+    document.documentElement.style.scrollBehavior = "auto";
+
+    for (let i = 0; i < sectionsToCapture; i++) {
+      const scrollTop = Math.min(
+        i * viewportHeight,
+        documentHeight - viewportHeight
+      );
+
+      console.log(
+        `📸 Capturing section ${
+          i + 1
+        }/${sectionsToCapture} at scroll position ${scrollTop}`
+      );
+
+      // Scroll to position (instantly)
+      window.scrollTo(0, scrollTop);
+
+      // Small delay to ensure rendering
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Capture this section
+      const sectionImage = await new Promise<string | null>((resolve) => {
+        chrome.runtime.sendMessage(
+          { type: "CAPTURE_SCREENSHOT" },
+          (response) => {
+            if (response?.dataUrl) {
+              resolve(response.dataUrl);
+            } else {
+              console.error(
+                `❌ Failed to capture section ${i + 1}:`,
+                response?.error
+              );
+              resolve(null);
+            }
+          }
+        );
+      });
+
+      if (sectionImage) {
+        capturedSections.push(sectionImage);
+      }
+    }
+
+    // Restore original scroll behavior and position
+    document.documentElement.style.scrollBehavior = originalScrollBehavior;
+    window.scrollTo(originalScrollLeft, originalScrollTop);
+
+    console.log(
+      `📸 Captured ${capturedSections.length} sections, using first section for analysis`
+    );
+
+    // For now, return the first section (which contains the most important info)
+    // In the future, we could stitch all sections together
+    if (capturedSections.length > 0) {
+      console.log("✅ Full page screenshot capture completed");
+      return capturedSections[0]; // Return the top section which has price, address, etc.
+    } else {
+      console.error("❌ No sections were captured successfully");
+      return null;
+    }
   } catch (error) {
-    console.error("❌ Error extracting page content:", error);
-    return "";
+    console.error("❌ Error in full page screenshot capture:", error);
+    // Restore scroll position on error
+    try {
+      const originalScrollTop =
+        window.pageYOffset || document.documentElement.scrollTop;
+      const originalScrollLeft =
+        window.pageXOffset || document.documentElement.scrollLeft;
+      window.scrollTo(originalScrollLeft, originalScrollTop);
+    } catch (restoreError) {
+      console.error("❌ Error restoring scroll position:", restoreError);
+    }
+    return null;
   }
 };
 
 /**
- * Send page content to background script for AI analysis
+ * Send screenshot to background script for AI analysis
  */
-const analyzePageContentWithAI = async (
-  htmlContent: string
+const analyzeScreenshotWithAI = async (
+  screenshotDataUrl: string
 ): Promise<PropertyData | null> => {
   try {
     console.log(
-      "🤖 Sending page content to background script for AI analysis..."
-    );
-    console.log(
-      "📄 HTML content preview (first 500 chars):",
-      htmlContent.substring(0, 500)
+      "🤖 Sending screenshot to background script for AI analysis..."
     );
 
     const response = await chrome.runtime.sendMessage({
-      type: "ANALYZE_HTML_CONTENT",
+      type: "ANALYZE_SCREENSHOT",
       data: {
-        htmlContent,
+        screenshotDataUrl,
         url: window.location.href,
       },
     });
 
-    console.log("🤖 AI analysis response received:", response);
+    console.log("🤖 Screenshot AI analysis response received:", response);
 
     if (response && response.propertyData) {
-      console.log("✅ AI analysis completed:", response.propertyData);
+      console.log(
+        "✅ Screenshot AI analysis completed:",
+        response.propertyData
+      );
       return response.propertyData;
     } else if (response && response.error) {
-      console.error("❌ AI analysis error from background:", response.error);
+      console.error(
+        "❌ Screenshot AI analysis error from background:",
+        response.error
+      );
       return null;
     } else {
       console.error(
-        "❌ Failed to analyze page content with AI - unexpected response:",
+        "❌ Failed to analyze screenshot with AI - unexpected response:",
         response
       );
       return null;
     }
   } catch (error) {
-    console.error("❌ Error analyzing page content with AI:", error);
+    console.error("❌ Error analyzing screenshot with AI:", error);
     if (error instanceof Error) {
       console.error("❌ Error details:", error.name, error.message);
     }
@@ -73,78 +191,76 @@ const analyzePageContentWithAI = async (
 };
 
 /**
- * Fallback: Extract property data using DOM selectors (when AI is unavailable)
+ * Fallback: Extract generic data using DOM selectors (when AI is unavailable)
  */
 const extractPropertyDataWithDOM = (): PropertyData | null => {
   try {
-    console.log("🔧 Using DOM fallback extraction...");
+    console.log("🔧 Using universal DOM extraction...");
 
-    // Extract price
-    const priceElement = document.querySelector("#listingPriceValue");
-    const priceText = priceElement?.textContent || "";
-    const priceMatch = priceText.match(/\$?([\d,]+)/);
-    const price = priceMatch ? parseInt(priceMatch[1].replace(/,/g, "")) : 0;
+    const url = window.location.href;
+    const pageTitle = document.title;
+
+    // Try to extract any price-like numbers from the page
+    const pageText = document.body.innerText;
+    const priceMatches = pageText.match(/\$[\d,]+/g);
+    let price = 0;
+
+    if (priceMatches) {
+      // Take the largest price found (likely the main price)
+      const prices = priceMatches.map((p) => parseInt(p.replace(/[$,]/g, "")));
+      price = Math.max(...prices);
+    }
     console.log("💰 Extracted price:", price);
 
-    // Extract address
-    const addressElement = document.querySelector("#listingAddress");
-    const address =
-      addressElement?.textContent?.trim().replace(/\s+/g, " ") ||
-      "Address not found";
+    // Use page title or URL as address fallback
+    let address = pageTitle;
+
+    // Try common address selectors
+    const addressSelectors = [
+      '[data-testid*="address"]',
+      ".address",
+      '[class*="address"]',
+      "h1",
+      '[data-cy*="address"]',
+    ];
+
+    for (const selector of addressSelectors) {
+      const element = document.querySelector(selector);
+      if (element?.textContent?.trim()) {
+        address = element.textContent.trim();
+        break;
+      }
+    }
     console.log("🏠 Extracted address:", address);
 
-    // Extract property type
-    const propertyTypeElement =
-      document.querySelector(
-        "#propertyDetailsSectionContentSubCon_PropertyType .propertyDetailsSectionContentValue"
-      ) ||
-      document.querySelector(
-        "#propertyDetailsSectionContentSubCon_BuildingType .propertyDetailsSectionContentValue"
-      );
-    const propertyType = propertyTypeElement?.textContent?.trim() || "Property";
+    // Generic property type from URL or page content
+    let propertyType = "Property";
+    if (url.includes("condo")) propertyType = "Condo";
+    else if (url.includes("house")) propertyType = "House";
+    else if (url.includes("apartment")) propertyType = "Apartment";
+    else if (url.includes("townhouse")) propertyType = "Townhouse";
+
     console.log("🏘️ Extracted property type:", propertyType);
 
-    // Extract bedrooms
-    const bedroomsElement = document.querySelector(
-      "#BedroomIcon .listingIconNum"
-    );
-    const bedroomsText = bedroomsElement?.textContent || "";
-    const bedroomsMatch = bedroomsText.match(/(\d+)(?:\s*\+\s*(\d+))?/);
-    let bedrooms: number | undefined;
-    if (bedroomsMatch) {
-      const mainBeds = parseInt(bedroomsMatch[1]);
-      const additionalBeds = bedroomsMatch[2] ? parseInt(bedroomsMatch[2]) : 0;
-      bedrooms = mainBeds + additionalBeds;
-    }
+    // Try to find bedroom/bathroom info in text
+    const bedroomMatch = pageText.match(/(\d+)[\s\-]*(?:bed|br|bedroom)/i);
+    const bedrooms = bedroomMatch ? parseInt(bedroomMatch[1]) : undefined;
     console.log("🛏️ Extracted bedrooms:", bedrooms);
 
-    // Extract bathrooms
-    const bathroomsElement = document.querySelector(
-      "#BathroomIcon .listingIconNum"
+    const bathroomMatch = pageText.match(
+      /(\d+(?:\.\d+)?)[\s\-]*(?:bath|bathroom)/i
     );
-    const bathroomsText = bathroomsElement?.textContent || "";
-    const bathroomsMatch = bathroomsText.match(/(\d+(?:\.\d+)?)/);
-    const bathrooms = bathroomsMatch
-      ? parseFloat(bathroomsMatch[1])
-      : undefined;
+    const bathrooms = bathroomMatch ? parseFloat(bathroomMatch[1]) : undefined;
     console.log("🚿 Extracted bathrooms:", bathrooms);
 
-    // Extract square footage
-    const sqftElement = document.querySelector(
-      "#SquareFootageIcon .listingIconNum"
+    // Try to find square footage
+    const sqftMatch = pageText.match(
+      /(\d+,?\d*)[\s\-]*(?:sq\.?\s*ft|sqft|square feet)/i
     );
-    const sqftText = sqftElement?.textContent || "";
-    let sqft: number | undefined;
-    if (sqftText && sqftText.trim() !== "-") {
-      const sqftMatch = sqftText.match(/([\d,]+)/);
-      sqft = sqftMatch ? parseInt(sqftMatch[1].replace(/,/g, "")) : undefined;
-    }
+    const sqft = sqftMatch
+      ? parseInt(sqftMatch[1].replace(/,/g, ""))
+      : undefined;
     console.log("📐 Extracted sqft:", sqft);
-
-    // Get URL and listing ID
-    const url = window.location.href;
-    const listingIdMatch = url.match(/\/(\d+)(?:\/|$)/);
-    const listingId = listingIdMatch ? listingIdMatch[1] : undefined;
 
     const propertyData: PropertyData = {
       price,
@@ -154,246 +270,81 @@ const extractPropertyDataWithDOM = (): PropertyData | null => {
       bathrooms,
       sqft,
       url,
-      listingId,
+      listingId: undefined,
     };
 
-    console.log("✅ DOM fallback extraction completed:", propertyData);
+    console.log("✅ Universal DOM extraction completed:", propertyData);
     return propertyData;
   } catch (error) {
-    console.error("❌ Error in DOM fallback extraction:", error);
+    console.error("❌ Error in universal DOM extraction:", error);
     return null;
   }
 };
 
 /**
- * Extract property data using HTML content and AI analysis
+ * Extract property data using screenshot and AI analysis
  */
-const extractPropertyDataWithAI = async (): Promise<PropertyData | null> => {
-  console.log("🚀 Starting AI-powered property data extraction...");
-
-  try {
-    // Step 1: Extract page HTML content (no visual disruption)
-    const htmlContent = extractPageContent();
-    if (!htmlContent) {
-      console.error("❌ Failed to extract page content");
-      return null;
-    }
-
-    // Step 2: Analyze with AI via background script
-    const propertyData = await analyzePageContentWithAI(htmlContent);
-    if (!propertyData) {
-      console.log("⚠️ AI analysis failed, trying DOM fallback...");
-      return extractPropertyDataWithDOM();
-    }
-
+const extractPropertyDataWithScreenshotAI =
+  async (): Promise<PropertyData | null> => {
     console.log(
-      "✅ Successfully extracted property data with AI:",
-      propertyData
+      "🚀 Starting Screenshot AI-powered property data extraction..."
     );
-    return propertyData;
-  } catch (error) {
-    console.error("❌ Error in AI extraction process:", error);
-    console.log("⚠️ Falling back to DOM extraction...");
-    return extractPropertyDataWithDOM();
-  }
-};
-
-/**
- * Create and inject the cashflow calculator button
- */
-const createCalculatorButton = (): void => {
-  console.log("🔧 Creating calculator button...");
-
-  // Check if button already exists
-  if (document.getElementById("realtor-cashflow-btn")) {
-    console.log("⚠️ Button already exists, skipping creation");
-    return;
-  }
-
-  const button = document.createElement("button");
-  button.id = "realtor-cashflow-btn";
-  button.textContent = "🤖 AI Extract Data";
-  button.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 10000;
-    background: #2196F3;
-    color: white;
-    border: none;
-    padding: 12px 16px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
-    transition: all 0.2s ease;
-  `;
-
-  // Add hover effect
-  button.addEventListener("mouseenter", () => {
-    button.style.background = "#1976D2";
-    button.style.transform = "translateY(-2px)";
-    button.style.boxShadow = "0 6px 16px rgba(33, 150, 243, 0.4)";
-  });
-
-  button.addEventListener("mouseleave", () => {
-    button.style.background = "#2196F3";
-    button.style.transform = "translateY(0)";
-    button.style.boxShadow = "0 4px 12px rgba(33, 150, 243, 0.3)";
-  });
-
-  // Handle button click
-  button.addEventListener("click", async () => {
-    console.log("🖱️ AI Extract Data button clicked!");
-
-    // Show loading state
-    button.textContent = "📸 Capturing...";
-    button.style.background = "#FF9800";
-    button.disabled = true;
 
     try {
-      // Update button text for AI analysis phase
-      setTimeout(() => {
-        button.textContent = "🤖 AI Analyzing...";
-      }, 500);
-
-      const propertyData = await extractPropertyDataWithAI();
-
-      if (propertyData && propertyData.price > 0) {
-        console.log("📤 Sending AI-extracted property data to extension...");
-
-        // Send message to popup/background script
-        const message: ChromeExtensionMessage = {
-          type: "PROPERTY_DATA",
-          data: propertyData,
-        };
-
-        chrome.runtime.sendMessage(message, (response) => {
-          if (chrome.runtime.lastError) {
-            console.error(
-              "❌ Error sending message:",
-              chrome.runtime.lastError
-            );
-          } else {
-            console.log("✅ Message sent successfully:", response);
-          }
-        });
-
-        // Store data in chrome storage for popup to access
-        console.log("💾 Storing AI-extracted data in chrome storage...");
-        chrome.storage.local.set(
-          {
-            currentPropertyData: propertyData,
-            lastUpdated: Date.now(),
-            extractionMethod: "AI_VISION",
-          },
-          () => {
-            if (chrome.runtime.lastError) {
-              console.error("❌ Error storing data:", chrome.runtime.lastError);
-            } else {
-              console.log("✅ Data stored successfully");
-            }
-          }
-        );
-
-        // Show success feedback
-        button.textContent = "✅ AI Extracted!";
-        button.style.background = "#4CAF50";
-        console.log("✅ Success feedback shown");
-
-        setTimeout(() => {
-          button.textContent = "🤖 AI Extract Data";
-          button.style.background = "#2196F3";
-          button.disabled = false;
-          console.log("🔄 Button reset to original state");
-        }, 3000);
-      } else {
-        console.log("❌ No valid property data found from AI analysis");
-
-        // Show error feedback
-        button.textContent = "❌ AI Failed";
-        button.style.background = "#f44336";
-
-        setTimeout(() => {
-          button.textContent = "🤖 AI Extract Data";
-          button.style.background = "#2196F3";
-          button.disabled = false;
-        }, 3000);
+      // Step 1: Capture full page screenshot
+      const screenshotDataUrl = await captureFullPageScreenshot();
+      if (!screenshotDataUrl) {
+        console.error("❌ Failed to capture screenshot");
+        return null;
       }
+
+      // Step 2: Analyze screenshot with AI via background script
+      const propertyData = await analyzeScreenshotWithAI(screenshotDataUrl);
+      if (!propertyData) {
+        console.log("⚠️ Screenshot AI analysis failed, trying DOM fallback...");
+        return extractPropertyDataWithDOM();
+      }
+
+      console.log(
+        "✅ Successfully extracted property data with Screenshot AI:",
+        propertyData
+      );
+      return propertyData;
     } catch (error) {
-      console.error("❌ Error in AI extraction process:", error);
-
-      button.textContent = "❌ Error";
-      button.style.background = "#f44336";
-
-      setTimeout(() => {
-        button.textContent = "🤖 AI Extract Data";
-        button.style.background = "#2196F3";
-        button.disabled = false;
-      }, 3000);
+      console.error("❌ Error in Screenshot AI extraction process:", error);
+      console.log("⚠️ Falling back to DOM extraction...");
+      return extractPropertyDataWithDOM();
     }
-  });
-
-  document.body.appendChild(button);
-  console.log("✅ AI-powered calculator button created and added to page");
-};
+  };
 
 /**
- * Check if current page is a property listing
+ * Check if current page is valid for data extraction
  */
-const isPropertyListingPage = (): boolean => {
+const isValidPage = (): boolean => {
   const url = window.location.href;
-  const isListing =
-    url.includes("realtor.ca") &&
-    (url.includes("/real-estate/") || url.includes("/property/"));
-  console.log("🔍 Checking if property listing page:", url, "->", isListing);
-  return isListing;
+  // Allow any webpage that's not chrome:// or about: pages
+  const isValid =
+    !url.startsWith("chrome://") &&
+    !url.startsWith("about:") &&
+    !url.startsWith("moz-extension://") &&
+    !url.startsWith("chrome-extension://");
+  console.log("🔍 Checking if valid page for extraction:", url, "->", isValid);
+  return isValid;
 };
 
 /**
  * Initialize the content script
  */
 const init = (): void => {
-  console.log("🚀 Initializing AI-powered content script...");
+  console.log("🚀 Initializing universal AI content script...");
   console.log("📄 Document ready state:", document.readyState);
+  console.log("🌐 Current URL:", window.location.href);
 
-  if (isPropertyListingPage()) {
-    console.log(
-      "✅ This is a property listing page, proceeding with initialization"
-    );
-
-    // Wait for page to load
-    if (document.readyState === "loading") {
-      console.log("⏳ Document still loading, waiting for DOMContentLoaded...");
-      document.addEventListener("DOMContentLoaded", () => {
-        console.log("✅ DOMContentLoaded fired, creating button");
-        createCalculatorButton();
-      });
-    } else {
-      console.log("✅ Document already loaded, creating button immediately");
-      createCalculatorButton();
-    }
-
-    // Also listen for navigation changes (SPA)
-    let lastUrl = location.href;
-    console.log("🔄 Setting up navigation listener for SPA changes");
-    new MutationObserver(() => {
-      const currentUrl = location.href;
-      if (currentUrl !== lastUrl) {
-        console.log("🔄 URL changed from", lastUrl, "to", currentUrl);
-        lastUrl = currentUrl;
-        if (isPropertyListingPage()) {
-          console.log(
-            "✅ New URL is also a property listing, creating button after delay"
-          );
-          setTimeout(createCalculatorButton, 1000);
-        }
-      }
-    }).observe(document, { subtree: true, childList: true });
+  if (isValidPage()) {
+    console.log("✅ Valid page for AI extraction");
   } else {
     console.log(
-      "❌ This is not a property listing page, skipping initialization"
+      "⚠️ Not a valid page for extraction (chrome:// or about: page)"
     );
   }
 };
@@ -405,11 +356,11 @@ chrome.runtime.onMessage.addListener(
 
     if (message.type === "GET_PROPERTY_DATA") {
       console.log(
-        "🔍 Popup requested property data, starting AI extraction..."
+        "🔍 Popup requested property data, starting screenshot AI extraction..."
       );
-      extractPropertyDataWithAI().then((propertyData) => {
+      extractPropertyDataWithScreenshotAI().then((propertyData) => {
         console.log(
-          "📤 Sending AI-extracted property data to popup:",
+          "📤 Sending screenshot AI-extracted property data to popup:",
           propertyData
         );
         sendResponse({ data: propertyData });
@@ -420,5 +371,5 @@ chrome.runtime.onMessage.addListener(
 );
 
 // Initialize when script loads
-console.log("🎯 AI-powered content script loaded, calling init...");
+console.log("🎯 Screenshot AI-powered content script loaded, calling init...");
 init();

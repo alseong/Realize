@@ -1,203 +1,185 @@
-# Realtor.ca Cashflow Calculator Chrome Extension
+# Universal AI Cashflow Calculator - Chrome Extension
 
-A Chrome browser extension that automatically extracts property data from Realtor.ca listings and calculates real estate cashflow metrics for investment analysis.
+A powerful Chrome extension that extracts property data from any website and calculates real estate investment cashflow using AI-powered screenshot analysis.
 
 ## Features
 
-- 🏠 **Automatic Data Extraction**: Extracts property price, address, bedrooms, bathrooms, and square footage from Realtor.ca listings
-- 💰 **Cashflow Calculation**: Calculates monthly and annual cashflow, cash-on-cash return, and cap rate
-- 📊 **Investment Metrics**: Provides comprehensive analysis including NOI, mortgage payments, and operating expenses
-- 🎨 **Modern UI**: Clean, responsive interface built with Material-UI
-- ⚡ **Real-time Analysis**: Instant calculations as you adjust parameters
+🌐 **Universal Website Support:**
 
-## Installation
+- Works on any real estate website (Realtor.ca, Zillow, MLS listings, etc.)
+- AI-powered screenshot analysis using OpenAI Vision
+- Smart fallback to DOM-based extraction
 
-### Option 1: Load Unpacked Extension (Developer Mode)
+🎯 **In-App AI Extraction:**
 
-1. **Build the Extension**:
+- "Auto fill with AI" button inside the popup
+- Full page screenshot capture (invisible to user)
+- Automatic form population with extracted data
 
-   ```bash
-   npm install
-   npm run build
+📊 **Advanced Cashflow Calculator:**
+
+- Comprehensive investment metrics
+- Cash-on-cash return calculation
+- Cap rate analysis
+- Monthly/annual cashflow projections
+- Real-time calculations
+
+## Setup Instructions
+
+### 1. API Keys Configuration
+
+#### Groq API Key (HTML Analysis)
+
+The extension comes with a demo Groq API key, but for production use:
+
+1. Get your API key from [Groq](https://console.groq.com/)
+2. Update `GROQ_API_KEY` in `src/background.ts`
+
+#### OpenAI API Key (Screenshot Analysis)
+
+**Required for screenshot analysis feature:**
+
+1. Get your API key from [OpenAI](https://platform.openai.com/api-keys)
+2. Update `OPENAI_API_KEY` in `src/background.ts`:
+   ```typescript
+   const OPENAI_API_KEY = "sk-your-actual-openai-api-key-here";
    ```
 
-2. **Open Chrome Extensions**:
+### 2. Build and Install
 
-   - Go to `chrome://extensions/`
-   - Enable "Developer mode" (toggle in top right)
+```bash
+# Install dependencies
+npm install
 
-3. **Load the Extension**:
+# Build the extension
+npm run build
 
-   - Click "Load unpacked"
-   - Select the `dist` folder from this project
-
-4. **Verify Installation**:
-   - The extension icon should appear in your Chrome toolbar
-   - You should see "Realtor.ca Cashflow Calculator" in your extensions list
+# Load extension in Chrome:
+# 1. Open Chrome and go to chrome://extensions/
+# 2. Enable "Developer mode"
+# 3. Click "Load unpacked"
+# 4. Select the 'dist' folder
+```
 
 ## Usage
 
-### Step 1: Navigate to a Property Listing
+### On Realtor.ca Property Pages
 
-- Go to [Realtor.ca](https://www.realtor.ca)
-- Open any property listing page
+The extension automatically detects Realtor.ca property listings and adds two extraction buttons:
 
-### Step 2: Extract Property Data
+1. **🤖 HTML Extract** - Analyzes page HTML content with Groq AI
+2. **📸 Screenshot Extract** - Captures and analyzes page screenshot with OpenAI Vision
 
-- Look for the blue "💰 Calculate Cashflow" button in the top-right corner of the page
-- Click the button to extract property data automatically
-- The button will show "✅ Data Extracted!" when successful
+### Extraction Process
 
-### Step 3: Open the Calculator
+1. **Navigate** to any Realtor.ca property listing
+2. **Choose** your preferred extraction method:
+   - HTML Extract: Faster, works with page content
+   - Screenshot Extract: More accurate, analyzes visual layout
+3. **Click** the button and wait for AI analysis
+4. **Open** the extension popup to see extracted data and calculate cashflow
 
-- Click the extension icon in your Chrome toolbar
-- The popup will open with the property data pre-filled
+### Cashflow Calculator
 
-### Step 4: Enter Investment Parameters
+After data extraction, the popup provides:
 
-- **Purchase Price**: Auto-filled from listing
-- **Down Payment**: Auto-calculated (default 20%)
-- **Interest Rate**: Mortgage interest rate (default 5.5%)
-- **Loan Term**: Mortgage amortization period (default 25 years)
-- **Monthly Rent**: Expected rental income
-
-### Step 5: Configure Advanced Expenses (Optional)
-
-- Click "Advanced Expenses" to expand
-- **Property Taxes**: Annual property tax amount
-- **Insurance**: Annual home insurance cost
-- **Maintenance**: Annual maintenance and repairs budget
-- **Property Management**: Annual property management fees
-- **Vacancy Rate**: Expected vacancy percentage
-- **Other Expenses**: Additional annual expenses
-
-### Step 6: Calculate Results
-
-- Click "Calculate Cashflow" button
-- View results including:
-  - **Monthly Cashflow**: Net monthly income after all expenses
-  - **Annual Cashflow**: Net annual income
-  - **Cash-on-Cash Return**: Annual return percentage on invested capital
-  - **Cap Rate**: Property capitalization rate
-  - **Monthly Breakdown**: Detailed income vs. expenses
-
-## Calculated Metrics
-
-### Cashflow Analysis
-
-- **Monthly Income**: Rental income adjusted for vacancy
-- **Monthly Expenses**: All operating expenses + mortgage payment
-- **Net Cashflow**: Income minus expenses
-- **Annual Cashflow**: Monthly cashflow × 12
-
-### Investment Returns
-
-- **Cash-on-Cash Return**: (Annual Cashflow ÷ Down Payment) × 100
-- **Cap Rate**: (Net Operating Income ÷ Purchase Price) × 100
-
-### Default Assumptions
-
-- Down Payment: 20% of purchase price
-- Interest Rate: 5.5% annually
-- Loan Term: 25 years
-- Property Tax Rate: 1.2% of property value
-- Insurance Rate: 0.3% of property value
-- Maintenance Rate: 1.0% of property value
-- Property Management: 8% of rental income
-- Vacancy Rate: 5%
+- Property details summary
+- Investment input fields
+- Real-time cashflow calculations
+- Advanced metrics (cap rate, cash-on-cash return)
+- Monthly breakdown analysis
 
 ## Technical Details
 
 ### Architecture
 
-- **Manifest V3**: Latest Chrome extension format
-- **React + TypeScript**: Modern frontend framework
-- **Material-UI**: Professional UI components
-- **Vite**: Fast build tool and development server
+- **Content Script**: Handles page interaction and data extraction
+- **Background Script**: Manages AI API calls and screenshot capture
+- **Popup UI**: React-based calculator interface with Material-UI
 
-### File Structure
+### AI Integration
 
-```
-src/
-├── types/property.ts          # TypeScript interfaces
-├── utils/cashflow.ts          # Calculation functions
-├── content-script.ts          # Realtor.ca page interaction
-├── background.ts              # Extension service worker
-├── App.tsx                    # Main popup component
-└── main.tsx                   # React app entry point
-```
+- **Groq API**: Fast HTML content analysis using Llama models
+- **OpenAI Vision**: Advanced screenshot analysis using GPT-4V
 
-### Security & Privacy
+### Screenshot Capture
 
-- **No Data Collection**: All calculations performed locally
-- **Minimal Permissions**: Only accesses Realtor.ca pages
-- **Local Storage**: Property data stored locally in browser
-- **No External APIs**: No data sent to external servers
+- Intelligent full-page capture
+- Automatic scroll positioning for optimal content
+- Focus on key property information areas
 
 ## Development
 
-### Prerequisites
-
-- Node.js 16+ and npm
-- Chrome browser
-
-### Setup
-
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd realtor-ca-cashflow-calculator
-
-# Install dependencies
-npm install
-
-# Start development server
+# Development mode with hot reload
 npm run dev
+
+# Type checking
+npm run lint
 
 # Build for production
 npm run build
 ```
 
-### Development Mode
+## File Structure
 
-```bash
-npm run dev
+```
+src/
+├── App.tsx              # Main calculator UI
+├── content-script.ts    # Page interaction logic
+├── background.ts        # AI analysis & screenshot handling
+├── types/
+│   └── property.ts      # TypeScript type definitions
+└── utils/
+    └── cashflow.ts      # Calculation utilities
 ```
 
-Then load the `dist` folder as an unpacked extension in Chrome.
+## API Usage & Costs
+
+### Groq API
+
+- **Model**: llama-3.1-8b-instant
+- **Cost**: Very low cost per request
+- **Speed**: Very fast response times
+
+### OpenAI API
+
+- **Model**: gpt-4o (with vision)
+- **Cost**: ~$0.01-0.02 per image analysis
+- **Accuracy**: High precision for visual data extraction
 
 ## Troubleshooting
 
-### Extension Not Working
+### Screenshot Analysis Not Working
 
-1. Ensure you're on a Realtor.ca property listing page
-2. Refresh the page after installing the extension
-3. Check that the extension is enabled in Chrome settings
+1. Verify OpenAI API key is correctly set in `src/background.ts`
+2. Check browser console for API errors
+3. Ensure sufficient OpenAI credits
 
-### Data Not Extracting
+### Extension Not Loading
 
-1. Try clicking the "Calculate Cashflow" button again
-2. Different listing layouts may require manual input
-3. Check browser console for any error messages
+1. Check `chrome://extensions/` for error messages
+2. Rebuild extension: `npm run build`
+3. Reload extension in Chrome
 
-### Build Issues
+### Data Extraction Issues
 
-1. Ensure Node.js 16+ is installed
-2. Delete `node_modules` and run `npm install` again
-3. Check that all dependencies are properly installed
+1. Try the alternative extraction method
+2. Check if page is fully loaded
+3. Verify you're on a valid Realtor.ca listing page
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch
+2. Create your feature branch
 3. Make your changes
-4. Test the extension thoroughly
+4. Test with both extraction methods
 5. Submit a pull request
 
 ## License
 
-This project is open source and available under the MIT License.
+MIT License - see LICENSE file for details.
 
-## Disclaimer
+---
 
-This tool is for educational and informational purposes only. Always consult with real estate professionals and conduct thorough due diligence before making investment decisions. The calculations provided are estimates and may not reflect actual investment performance.
+**Note**: This extension is for educational and personal use. Ensure compliance with Realtor.ca's terms of service when using automated data extraction.
