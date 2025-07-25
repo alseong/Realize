@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Universal AI Cashflow Calculator",
+  "name": "Realize: Analyze real estate with 0 friction",
   "version": "4.0.0",
-  "description": "Calculate cashflow for real estate investments from any website using AI-powered data extraction",
+  "description": "Analyze real estate listings with AI-powered financial calculations",
   "permissions": ["activeTab", "storage", "tabs", "scripting"],
   "host_permissions": ["<all_urls>"],
   "icons": {
@@ -19,7 +19,7 @@
   ],
   "action": {
     "default_popup": "index.html",
-    "default_title": "Universal AI Cashflow Calculator",
+    "default_title": "Realize: Analyze real estate with 0 friction",
     "default_icon": {
       "16": "icon16.png",
       "48": "icon48.png",
