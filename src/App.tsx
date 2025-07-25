@@ -1158,69 +1158,78 @@ function App() {
                         borderRadius: 1,
                         mb: 1,
                         "&:hover": { bgcolor: "action.hover" },
+                        flexDirection: "column",
+                        alignItems: "stretch",
+                        p: 2,
                       }}
                     >
-                      <ListItemText
-                        primary={calc.name}
-                        secondary={
-                          <Box>
-                            <Typography variant="body2" color="text.secondary">
-                              {calc.address}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              Cashflow:{" "}
-                              {formatCurrency(calc.results.monthlyCashflow)}
-                              /month
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              Saved: {formatDate(calc.savedAt)}
-                            </Typography>
-                            {calc.notes && (
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                sx={{ fontStyle: "italic" }}
-                              >
-                                {calc.notes}
-                              </Typography>
-                            )}
-                          </Box>
-                        }
-                      />
-                      <ListItemSecondaryAction>
-                        <Box sx={{ display: "flex", gap: 1 }}>
-                          {calc.listingUrl && (
-                            <Tooltip title="Open Listing">
-                              <IconButton
-                                size="small"
-                                onClick={() =>
-                                  window.open(calc.listingUrl, "_blank")
-                                }
-                              >
-                                <LaunchOutlined />
-                              </IconButton>
-                            </Tooltip>
-                          )}
-                          <Tooltip title="Load Calculation">
+                      <Box sx={{ mb: 2 }}>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{ fontWeight: 600 }}
+                        >
+                          {calc.name}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ mt: 0.5 }}
+                        >
+                          Cashflow:{" "}
+                          {formatCurrency(calc.results.monthlyCashflow)}/month
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Saved: {formatDate(calc.savedAt)}
+                        </Typography>
+                        {calc.notes && (
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ fontStyle: "italic", mt: 0.5 }}
+                          >
+                            {calc.notes}
+                          </Typography>
+                        )}
+                      </Box>
+
+                      <Box
+                        sx={{
+                          display: "flex",
+                          gap: 1,
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        {calc.listingUrl && (
+                          <Tooltip title="Open Listing">
                             <IconButton
                               size="small"
-                              onClick={() => handleLoadCalculation(calc)}
-                              color="primary"
+                              onClick={() =>
+                                window.open(calc.listingUrl, "_blank")
+                              }
                             >
-                              <FolderOpenOutlined />
+                              <LaunchOutlined />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="Delete">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDeleteCalculation(calc.id)}
-                              color="error"
-                            >
-                              <DeleteOutlined />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      </ListItemSecondaryAction>
+                        )}
+                        <Tooltip title="Load Calculation">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleLoadCalculation(calc)}
+                            color="primary"
+                          >
+                            <FolderOpenOutlined />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteCalculation(calc.id)}
+                            color="error"
+                          >
+                            <DeleteOutlined />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
                     </ListItem>
                   ))}
                 </List>
