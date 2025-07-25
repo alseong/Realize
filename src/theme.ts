@@ -63,7 +63,7 @@ export const theme = createTheme({
             "&.Mui-focused": {
               backgroundColor: "#FFFFFF",
               borderColor: "#1E3A8A",
-              boxShadow: "0 0 0 3px rgba(30, 58, 138, 0.1)",
+              boxShadow: "none",
             },
           },
           "& .MuiInputLabel-root": {

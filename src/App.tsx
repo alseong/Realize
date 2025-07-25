@@ -17,22 +17,24 @@ import {
   DialogActions,
   List,
   ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
+  // ListItemText,
+  // ListItemSecondaryAction,
   IconButton,
   Tooltip,
   AppBar,
   Toolbar,
 } from "@mui/material";
 import {
-  HomeOutlined,
+  Villa,
   AttachMoneyOutlined,
   TrendingUpOutlined,
   SaveOutlined,
   FolderOpenOutlined,
+  CalculateOutlined,
   DeleteOutlined,
   LaunchOutlined,
   FileDownloadOutlined,
+  AutoAwesome,
 } from "@mui/icons-material";
 import { theme } from "./theme";
 
@@ -45,6 +47,9 @@ import type {
 import {
   calculateCashflow,
   calculateMortgagePayment,
+  calculateMinimumDownPayment,
+  calculateDownPaymentPercentage,
+  calculateDownPaymentAmount,
   formatCurrency,
   formatPercentage,
 } from "./utils/cashflow";
@@ -63,7 +68,6 @@ function App() {
   const [calculating, setCalculating] = useState<boolean>(false);
   const [result, setResult] = useState<CashflowResult | null>(null);
   const [error, setError] = useState<string>("");
-  const [success, setSuccess] = useState<boolean>(false);
   const [extracting, setExtracting] = useState<boolean>(false);
   const [savedCalculations, setSavedCalculations] = useState<
     SavedCalculation[]
@@ -96,108 +100,86 @@ function App() {
   const [downPaymentPercentage, setDownPaymentPercentage] =
     useState<number>(20); // Default 20%
 
-  // Auto-analyze current page when popup opens
-  const autoAnalyzePage = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      setSuccess(false);
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        // Get current active tab
+        const tabs = await chrome.tabs.query({
+          active: true,
+          currentWindow: true,
+        });
 
-      // Get current active tab
-      const tabs = await chrome.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
+        if (!tabs[0]?.url) {
+          setLoading(false);
+          return;
+        }
 
-      if (tabs[0]?.id) {
-        // Send message to content script to extract data
-        chrome.tabs.sendMessage(
-          tabs[0].id,
-          { type: "GET_PROPERTY_DATA" },
-          (response) => {
-            if (chrome.runtime.lastError) {
-              console.error(
-                "❌ Error communicating with content script:",
-                chrome.runtime.lastError
-              );
-              setError(
-                "We could not extract data from this page. Please try refreshing the page."
-              );
-              setLoading(false);
-              return;
+        const currentUrl = tabs[0].url;
+
+        // Check if we have cached data for this URL
+        const cachedData = await chrome.storage.local.get([
+          "currentPropertyData",
+          "lastUpdated",
+          "cachedUrl",
+          "extractionMethod",
+        ]);
+
+        const hasCachedData =
+          cachedData.currentPropertyData &&
+          cachedData.cachedUrl === currentUrl &&
+          cachedData.lastUpdated;
+
+        if (hasCachedData) {
+          console.log("✅ Using cached data for current page");
+          setPropertyData(cachedData.currentPropertyData);
+
+          // Restore form inputs from cache
+          const newPrice = cachedData.currentPropertyData.price || 0;
+          setInputs((prev) => {
+            const newInputs = {
+              ...prev,
+              purchasePrice: newPrice,
+              propertyTaxes: cachedData.currentPropertyData.propertyTax || 0,
+              insurance: cachedData.currentPropertyData.insurance || 0,
+              hoaFees: cachedData.currentPropertyData.hoaFees || 0,
+              monthlyRent: cachedData.currentPropertyData.monthlyRent || 0,
+              interestRate: cachedData.currentPropertyData.interestRate || 6.5,
+            };
+
+            // Update down payment percentage
+            if (newPrice > 0) {
+              if (newInputs.downPayment > 0) {
+                const currentPercentage =
+                  (newInputs.downPayment / newPrice) * 100;
+                setDownPaymentPercentage(
+                  Math.round(currentPercentage * 100) / 100
+                );
+              } else {
+                const defaultDownPayment = (newPrice * 20) / 100;
+                newInputs.downPayment = defaultDownPayment;
+                setDownPaymentPercentage(20);
+              }
             }
 
-            if (response?.data) {
-              console.log("✅ Data extracted successfully:", response.data);
-              setPropertyData(response.data);
+            return newInputs;
+          });
 
-              // Auto-fill the form with extracted data
-              const newPrice = response.data.price || 0;
-              setInputs((prev) => {
-                const newInputs = {
-                  ...prev,
-                  purchasePrice: newPrice,
-                  propertyTaxes: response.data.propertyTax || 0,
-                  insurance: response.data.insurance || 0,
-                  hoaFees: response.data.hoaFees || 0,
-                };
-
-                // Update down payment percentage based on current dollar amount and new price
-                if (newPrice > 0 && newInputs.downPayment > 0) {
-                  const currentPercentage =
-                    (newInputs.downPayment / newPrice) * 100;
-                  setDownPaymentPercentage(
-                    Math.round(currentPercentage * 100) / 100
-                  );
-                }
-
-                return newInputs;
-              });
-
-              // Store the data
-              chrome.storage.local.set({
-                currentPropertyData: response.data,
-                lastUpdated: Date.now(),
-                extractionMethod: "AUTO_ANALYSIS",
-              });
-
-              setError("");
-              setSuccess(true);
-
-              // Auto-calculate cashflow after AI extraction
-              setTimeout(() => {
-                try {
-                  const calculationResult = calculateCashflow({
-                    ...inputs,
-                    purchasePrice: newPrice,
-                    propertyTaxes: response.data.propertyTax || 0,
-                    insurance: response.data.insurance || 0,
-                    hoaFees: response.data.hoaFees || 0,
-                  });
-                  setResult(calculationResult);
-                } catch (err) {
-                  console.error("Auto-calculation error:", err);
-                }
-              }, 100);
-            } else {
-              setError("We could not auto extract the data from this page.");
-            }
-            setLoading(false);
-          }
-        );
-      } else {
-        setError("We could not auto extract the data from this page.");
+          setError("");
+          setLoading(false);
+        } else {
+          console.log(
+            "🔄 No cached data found, showing manual Auto Fill button"
+          );
+          setLoading(false);
+          // Don't auto-analyze, just show the manual button
+        }
+      } catch (error) {
+        console.error("Error initializing app:", error);
         setLoading(false);
       }
-    } catch (err) {
-      console.error("Error during auto-analysis:", err);
-      setError("We could not auto extract the data from this page.");
-      setLoading(false);
-    }
-  };
+    };
 
-  useEffect(() => {
-    autoAnalyzePage();
+    initializeApp();
   }, []);
 
   // Load saved calculations on mount
@@ -235,7 +217,10 @@ function App() {
 
     // Update percentage based on dollar amount
     if (inputs.purchasePrice > 0) {
-      const percentage = (value / inputs.purchasePrice) * 100;
+      const percentage = calculateDownPaymentPercentage(
+        value,
+        inputs.purchasePrice
+      );
       setDownPaymentPercentage(Math.round(percentage * 100) / 100); // Round to 2 decimal places
     }
   };
@@ -248,10 +233,22 @@ function App() {
 
     // Update dollar amount based on percentage
     if (inputs.purchasePrice > 0) {
-      const dollarAmount = (inputs.purchasePrice * value) / 100;
+      const dollarAmount = calculateDownPaymentAmount(
+        value,
+        inputs.purchasePrice
+      );
       setInputs((prev) => ({ ...prev, downPayment: dollarAmount }));
     }
   };
+
+  // Calculate minimum down payment for current purchase price
+  const minimumDownPayment = calculateMinimumDownPayment(inputs.purchasePrice);
+  const minimumDownPaymentPercentage =
+    inputs.purchasePrice > 0
+      ? calculateDownPaymentPercentage(minimumDownPayment, inputs.purchasePrice)
+      : 0;
+  const isDownPaymentBelowMinimum =
+    inputs.downPayment < minimumDownPayment && inputs.purchasePrice > 0;
 
   const refreshCurrentPage = async () => {
     try {
@@ -264,16 +261,11 @@ function App() {
         await chrome.tabs.reload(tabs[0].id);
 
         // Reset app state and rerender
-        setLoading(true);
+        setLoading(false);
         setError("");
         setPropertyData(null);
         setResult(null);
         setExtracting(false);
-
-        // Wait for page to load, then auto-analyze
-        setTimeout(() => {
-          autoAnalyzePage();
-        }, 2000); // 2 second delay to ensure page is fully loaded
       }
     } catch (error) {
       console.error("Error refreshing page:", error);
@@ -283,7 +275,6 @@ function App() {
   const handleAIExtraction = async () => {
     setExtracting(true);
     setError("");
-    setSuccess(false);
 
     try {
       // Get current active tab
@@ -338,29 +329,38 @@ function App() {
                 propertyTaxes: response.data.propertyTax || 0,
                 insurance: response.data.insurance || 0,
                 hoaFees: response.data.hoaFees || 0,
+                monthlyRent: response.data.monthlyRent || 0,
+                interestRate: response.data.interestRate || 6.5, // Default to 6.5% if not provided
               };
 
               // Update down payment percentage based on current dollar amount and new price
-              if (newPrice > 0 && newInputs.downPayment > 0) {
-                const currentPercentage =
-                  (newInputs.downPayment / newPrice) * 100;
-                setDownPaymentPercentage(
-                  Math.round(currentPercentage * 100) / 100
-                );
+              if (newPrice > 0) {
+                if (newInputs.downPayment > 0) {
+                  const currentPercentage =
+                    (newInputs.downPayment / newPrice) * 100;
+                  setDownPaymentPercentage(
+                    Math.round(currentPercentage * 100) / 100
+                  );
+                } else {
+                  // If down payment is 0, set it to 20% of the new price
+                  const defaultDownPayment = (newPrice * 20) / 100;
+                  newInputs.downPayment = defaultDownPayment;
+                  setDownPaymentPercentage(20);
+                }
               }
 
               return newInputs;
             });
 
-            // Store the data
+            // Store the data with current URL
             chrome.storage.local.set({
               currentPropertyData: response.data,
               lastUpdated: Date.now(),
+              cachedUrl: tab.url,
               extractionMethod: "AI_POPUP",
             });
 
             setError("");
-            setSuccess(true);
 
             // Auto-calculate cashflow after AI extraction
             setTimeout(() => {
@@ -371,6 +371,8 @@ function App() {
                   propertyTaxes: response.data.propertyTax || 0,
                   insurance: response.data.insurance || 0,
                   hoaFees: response.data.hoaFees || 0,
+                  monthlyRent: response.data.monthlyRent || 0,
+                  interestRate: response.data.interestRate || 6.5,
                 });
                 setResult(calculationResult);
               } catch (err) {
@@ -566,8 +568,55 @@ function App() {
           }}
         >
           <Toolbar sx={{ minHeight: 48, px: 2 }}>
-            <HomeOutlined sx={{ color: "#F59E0B", fontSize: 24 }} />
+            <Villa sx={{ color: "#F59E0B", fontSize: 24 }} />
             <Box sx={{ flexGrow: 1 }} />
+            <Tooltip title="Clear fields">
+              <Button
+                onClick={() => {
+                  setPropertyData(null);
+                  setResult(null);
+                  setError("");
+                  setInputs({
+                    purchasePrice: 0,
+                    downPayment: 0,
+                    interestRate: 5.5,
+                    loanTerm: 25,
+                    monthlyRent: 0,
+                    propertyTaxes: 0,
+                    insurance: 0,
+                    propertyManagement: 8,
+                    maintenanceReserve: 7,
+                    vacancy: 6,
+                    capExReserve: 5,
+                    hoaFees: 0,
+                    otherExpenses: 0,
+                  });
+                  setDownPaymentPercentage(20);
+                }}
+                sx={{
+                  color: "#FFFFFF",
+                  fontSize: "14px",
+                  fontWeight: 400,
+                  mr: 1,
+                  textTransform: "none",
+                  minWidth: "auto",
+                  padding: "6px 8px",
+                  "&:hover": {
+                    backgroundColor: "transparent",
+                    color: "#FFFFFF",
+                  },
+                  "&:focus": {
+                    outline: "none",
+                  },
+                  "&:active": {
+                    backgroundColor: "transparent",
+                    color: "#FFFFFF",
+                  },
+                }}
+              >
+                Clear
+              </Button>
+            </Tooltip>
             <Tooltip title="Save current calculation with notes">
               <IconButton
                 onClick={openSaveDialog}
@@ -613,28 +662,37 @@ function App() {
             </Alert>
           )}
 
-          {success && (
-            <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>
-              <Box>
-                We were able to successfully extract the data for this page! If
-                the data was not correct,{" "}
-                <Box
-                  component="span"
-                  onClick={handleAIExtraction}
-                  sx={{
-                    textDecoration: "underline",
-                    cursor: "pointer",
-                    color: "inherit",
-                    "&:hover": {
-                      textDecoration: "none",
-                    },
-                  }}
-                >
-                  try again
-                </Box>
-                .
-              </Box>
-            </Alert>
+          {/* Auto Fill Button */}
+          {!propertyData && !loading && (
+            <Box sx={{ mb: 3 }}>
+              <Button
+                onClick={handleAIExtraction}
+                disabled={extracting}
+                variant="contained"
+                fullWidth
+                startIcon={
+                  extracting ? <CircularProgress size={16} /> : <AutoAwesome />
+                }
+                sx={{
+                  backgroundColor: "#F59E0B",
+                  color: "#FFFFFF",
+                  textTransform: "none",
+                  fontWeight: 600,
+                  borderRadius: "8px",
+                  boxShadow: "0 2px 4px rgba(245, 158, 11, 0.3)",
+                  "&:hover": {
+                    backgroundColor: "#D97706",
+                    boxShadow: "0 4px 8px rgba(245, 158, 11, 0.4)",
+                  },
+                  "&:disabled": {
+                    backgroundColor: "#9CA3AF",
+                    boxShadow: "none",
+                  },
+                }}
+              >
+                {extracting ? "Extracting..." : "Auto Fill Data"}
+              </Button>
+            </Box>
           )}
 
           {/* Property Information */}
@@ -645,9 +703,7 @@ function App() {
                 gutterBottom
                 sx={{ display: "flex", alignItems: "center", mb: 2 }}
               >
-                <HomeOutlined
-                  sx={{ mr: 1, fontSize: 18, color: "secondary.main" }}
-                />
+                <Villa sx={{ mr: 1, fontSize: 18, color: "secondary.main" }} />
                 Property Details
               </Typography>
               <Card
@@ -748,6 +804,35 @@ function App() {
                 sx={{ width: "25%" }}
               />
             </Box>
+
+            {/* Minimum Down Payment Alert */}
+            {inputs.purchasePrice > 0 && isDownPaymentBelowMinimum && (
+              <Alert
+                severity="warning"
+                sx={{
+                  mb: 2,
+                  borderRadius: 2,
+                  backgroundColor: "rgba(245, 158, 11, 0.1)",
+                  border: "1px solid rgba(245, 158, 11, 0.2)",
+                  "& .MuiAlert-icon": {
+                    color: "#F59E0B",
+                  },
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  ⚠️ Minimum Down Payment: {formatCurrency(minimumDownPayment)}(
+                  {minimumDownPaymentPercentage.toFixed(1)}%)
+                  <Box
+                    component="span"
+                    sx={{ color: "#F59E0B", fontWeight: 600 }}
+                  >
+                    {" "}
+                    • Below minimum required
+                  </Box>
+                </Typography>
+              </Alert>
+            )}
+
             <Box sx={{ display: "flex", gap: 1 }}>
               <TextField
                 label="Interest Rate"
@@ -1217,7 +1302,7 @@ function App() {
                             onClick={() => handleLoadCalculation(calc)}
                             color="primary"
                           >
-                            <FolderOpenOutlined />
+                            <CalculateOutlined />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Delete">

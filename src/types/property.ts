@@ -10,6 +10,8 @@ export interface PropertyData {
   propertyTax?: number; // monthly
   insurance?: number; // monthly
   hoaFees?: number; // monthly
+  monthlyRent?: number; // monthly rent
+  interestRate?: number; // annual percentage
 }
 
 export interface CashflowInputs {
@@ -57,6 +59,7 @@ export interface ChromeExtensionMessage {
     | "GET_PROPERTY_DATA"
     | "GET_PROPERTY_DATA_HTML"
     | "CAPTURE_SCREENSHOT"
-    | "ANALYZE_HTML_CONTENT";
+    | "ANALYZE_HTML_CONTENT"
+    | "ANALYZE_HTML_CONTENT_FINANCIALS";
   data?: any;
 }

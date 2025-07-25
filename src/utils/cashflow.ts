@@ -138,3 +138,49 @@ export const formatCurrency = (amount: number): string => {
 export const formatPercentage = (percentage: number): string => {
   return `${percentage.toFixed(2)}%`;
 };
+
+/**
+ * Calculate minimum down payment based on Canada's mortgage rules
+ *
+ * Purchase Price Under $500,000: 5% minimum
+ * Purchase Price $500,000 - $999,999: 5% on first $500K + 10% on portion above $500K
+ * Purchase Price $1,000,000+: 20% minimum
+ */
+export const calculateMinimumDownPayment = (purchasePrice: number): number => {
+  if (purchasePrice <= 0) return 0;
+
+  if (purchasePrice < 500000) {
+    // Under $500,000: 5% minimum
+    return purchasePrice * 0.05;
+  } else if (purchasePrice < 1000000) {
+    // $500,000 - $999,999: 5% on first $500K + 10% on portion above $500K
+    const first500k = 500000 * 0.05;
+    const remainingAmount = purchasePrice - 500000;
+    const remaining10Percent = remainingAmount * 0.1;
+    return first500k + remaining10Percent;
+  } else {
+    // $1,000,000+: 20% minimum
+    return purchasePrice * 0.2;
+  }
+};
+
+/**
+ * Calculate down payment percentage based on dollar amount and purchase price
+ */
+export const calculateDownPaymentPercentage = (
+  downPayment: number,
+  purchasePrice: number
+): number => {
+  if (purchasePrice <= 0) return 0;
+  return (downPayment / purchasePrice) * 100;
+};
+
+/**
+ * Calculate down payment dollar amount based on percentage and purchase price
+ */
+export const calculateDownPaymentAmount = (
+  percentage: number,
+  purchasePrice: number
+): number => {
+  return (purchasePrice * percentage) / 100;
+};

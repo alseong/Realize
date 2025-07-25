@@ -274,6 +274,143 @@ chrome.runtime.onInstalled.addListener((_details) => {
   // Extension installed or updated
 });
 
+/**
+ * Analyze property data specifically for financial data (tax, insurance, HOA)
+ */
+const analyzePropertyDataForFinancials = async (
+  inputPropertyData: PropertyData,
+  url: string
+): Promise<PropertyData | null> => {
+  try {
+    console.log("🔍 Starting financial data analysis for property:", {
+      address: inputPropertyData.address,
+      price: inputPropertyData.price,
+      propertyType: inputPropertyData.propertyType,
+    });
+    const prompt = `You are a specialized financial data analysis tool. Analyze the provided property data and estimate the monthly financial costs and interest rate, then return ONLY the financial information as JSON.
+
+CRITICAL: 
+1. Return ONLY valid JSON, no code, no explanations, no other text
+2. Analyze the provided property data to estimate financial costs and interest rate
+3. Use property price, type, location, and characteristics to estimate monthly costs
+4. If you cannot estimate specific data, return null for that field
+5. Focus ONLY on financial data: monthly rent, property tax, insurance, and interest rate
+
+MONTHLY RENT ESTIMATION:
+- Estimate monthly rent based on property price, type, bedrooms, bathrooms, and location
+- Use typical rent-to-price ratios for the property type and location
+- For single family homes: typically 0.5-1% of property value per month
+- For condos: typically 0.6-1.2% of property value per month
+- Consider property characteristics (bedrooms, bathrooms, sqft) for more accurate estimates
+- Return estimated monthly rent amount
+- If cannot estimate: return null
+
+MONTHLY PROPERTY TAX ESTIMATION:
+- Estimate monthly property tax based on property price and location
+- Use typical property tax rates for the area (usually 0.5-2% of property value annually)
+- Common rates: 0.5-1.5% of property value per year, divided by 12 for monthly
+- Consider property type and location for more accurate estimates
+- Return estimated monthly property tax amount
+- If cannot estimate: return null
+
+MONTHLY INSURANCE ESTIMATION:
+- Estimate monthly insurance based on property price, type, and location
+- Use typical insurance rates for the property type and area
+- Common rates: 0.2-0.5% of property value annually, divided by 12 for monthly
+- Consider property characteristics and location for more accurate estimates
+- Return estimated monthly insurance amount
+- If cannot estimate: return null
+
+INTEREST RATE ESTIMATION:
+- Estimate current mortgage interest rate based on property price, location, and market conditions
+- Consider current market rates (typically 5-7% for conventional mortgages)
+- Higher property prices may qualify for better rates
+- Consider location (urban vs rural, different provinces may have different rates)
+- Property type may affect rates (primary residence vs investment property)
+- Return estimated annual interest rate as a percentage (e.g., 6.5 for 6.5%)
+- If cannot estimate: return null
+
+IMPORTANT RULES:
+1. Use the property price as the primary factor for all estimates
+2. Consider property type (single family, condo, townhouse) for different rate adjustments
+3. Consider location and property characteristics for more accurate estimates
+4. Return actual numbers only (no currency symbols)
+5. Be conservative with estimates - it's better to underestimate than overestimate
+6. Use typical market rates and ratios for the property type and location
+7. For interest rate, consider current market conditions and property characteristics
+
+Extract these fields from property data analysis:
+- monthlyRent: Estimated monthly rent amount (null if cannot estimate)
+- propertyTax: Estimated monthly property tax amount (null if cannot estimate)
+- insurance: Estimated monthly insurance amount (null if cannot estimate)
+- interestRate: Estimated annual interest rate as percentage (null if cannot estimate)
+
+Property data to analyze:
+${JSON.stringify(inputPropertyData, null, 2)}`;
+
+    console.log("🔍 Making Groq API call for financial data analysis...");
+
+    const response = await fetch(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant",
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 500,
+          temperature: 0.0,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Groq API error: ${response.status} ${response.statusText} - ${errorText}`
+      );
+    }
+
+    const result = await response.json();
+    if (!result.choices?.[0]?.message?.content) {
+      return null;
+    }
+
+    const aiResponse = result.choices[0].message.content;
+
+    // Parse the JSON response
+    let propertyData;
+    try {
+      propertyData = JSON.parse(aiResponse);
+    } catch (parseError) {
+      // Try to extract JSON from response if it's wrapped in other text
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          propertyData = JSON.parse(jsonMatch[0]);
+        } catch {
+          return null;
+        }
+      } else {
+        return null;
+      }
+    }
+
+    // Add URL to the data
+    const finalData: PropertyData = {
+      ...propertyData,
+      url,
+    };
+
+    return finalData;
+  } catch (error) {
+    return null;
+  }
+};
+
 // Handle messages from content script and popup
 chrome.runtime.onMessage.addListener(
   (message: ChromeExtensionMessage, _sender, sendResponse) => {
@@ -285,6 +422,23 @@ chrome.runtime.onMessage.addListener(
           sendResponse({ propertyData });
         })
         .catch((error) => {
+          sendResponse({ error: error.message });
+        });
+
+      return true; // Keep message channel open for async response
+    }
+
+    if (message.type === "ANALYZE_HTML_CONTENT_FINANCIALS") {
+      console.log("🔍 Received ANALYZE_HTML_CONTENT_FINANCIALS message");
+      const { propertyData, url } = message.data;
+
+      analyzePropertyDataForFinancials(propertyData, url)
+        .then((financialData) => {
+          console.log("🔍 Financial analysis completed:", financialData);
+          sendResponse({ propertyData: financialData });
+        })
+        .catch((error: any) => {
+          console.log("❌ Financial analysis failed:", error);
           sendResponse({ error: error.message });
         });
 
