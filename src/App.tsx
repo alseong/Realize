@@ -11,7 +11,6 @@ import {
   Chip,
   InputAdornment,
   ThemeProvider,
-  createTheme,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -34,8 +33,8 @@ import {
   DeleteOutlined,
   LaunchOutlined,
   FileDownloadOutlined,
-  AutoAwesome,
 } from "@mui/icons-material";
+import { theme } from "./theme";
 
 import type {
   PropertyData,
@@ -58,178 +57,13 @@ import {
   exportToExcel,
 } from "./utils/storage";
 
-// Create Material UI theme with modern 2025 SaaS design
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: "#1E3A8A", // Deep Navy
-      light: "#3B82F6",
-      dark: "#1E40AF",
-    },
-    secondary: {
-      main: "#F59E0B", // Gold Accent
-      light: "#FBBF24",
-      dark: "#D97706",
-    },
-    background: {
-      default: "#FFFFFF", // Clean White
-      paper: "#FFFFFF", // Clean White
-    },
-    text: {
-      primary: "#1F2937", // Dark gray for primary text
-      secondary: "#6B7280", // Medium gray for secondary text
-    },
-  },
-  typography: {
-    fontSize: 14,
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-    h6: {
-      fontWeight: 700,
-      color: "#1F2937",
-      fontSize: "1.125rem",
-    },
-    body1: {
-      fontSize: "0.875rem",
-      lineHeight: 1.5,
-    },
-    body2: {
-      fontSize: "0.8125rem",
-      lineHeight: 1.4,
-    },
-  },
-  shape: {
-    borderRadius: 4,
-  },
-  spacing: 8, // 8px grid system
-  components: {
-    MuiTextField: {
-      defaultProps: {
-        size: "small",
-        variant: "outlined",
-      },
-      styleOverrides: {
-        root: {
-          "& .MuiOutlinedInput-root": {
-            borderRadius: 4,
-            backgroundColor: "#FFFFFF",
-            border: "1px solid #E5E7EB",
-            transition: "all 0.2s ease-in-out",
-            "&:hover": {
-              backgroundColor: "#FFFFFF",
-              borderColor: "rgba(30, 58, 138, 0.3)",
-            },
-            "&.Mui-focused": {
-              backgroundColor: "#FFFFFF",
-              borderColor: "#1E3A8A",
-              boxShadow: "0 0 0 3px rgba(30, 58, 138, 0.1)",
-            },
-          },
-          "& .MuiInputLabel-root": {
-            color: "#6B7280",
-            "&.Mui-focused": {
-              color: "#1E3A8A",
-            },
-          },
-        },
-      },
-    },
-    MuiButton: {
-      defaultProps: {
-        size: "medium",
-      },
-      styleOverrides: {
-        root: {
-          textTransform: "none",
-          fontWeight: 600,
-          borderRadius: 6,
-          padding: "10px 24px",
-          transition: "all 0.2s ease-in-out",
-          position: "relative",
-          overflow: "hidden",
-          "&::before": {
-            content: '""',
-            position: "absolute",
-            top: 0,
-            left: "-100%",
-            width: "100%",
-            height: "100%",
-            background:
-              "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
-            transition: "left 0.5s",
-          },
-          "&:hover::before": {
-            left: "100%",
-          },
-        },
-        contained: {
-          background: "linear-gradient(135deg, #1E3A8A 0%, #1E40AF 100%)",
-          boxShadow: "0 4px 14px 0 rgba(30, 58, 138, 0.3)",
-          "&:hover": {
-            background: "linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%)",
-            boxShadow: "0 6px 20px 0 rgba(30, 58, 138, 0.4)",
-            transform: "translateY(-1px)",
-          },
-        },
-        outlined: {
-          border: "2px solid rgba(30, 58, 138, 0.3)",
-          backgroundColor: "#FFFFFF",
-          "&:hover": {
-            backgroundColor: "rgba(30, 58, 138, 0.05)",
-            borderColor: "#1E3A8A",
-            transform: "translateY(-1px)",
-          },
-        },
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          backgroundColor: "#FFFFFF",
-          borderRadius: 4,
-          border: "1px solid #E5E7EB",
-          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-          transition: "all 0.3s ease-in-out",
-          "&:hover": {
-            transform: "translateY(-1px)",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-          },
-        },
-      },
-    },
-    MuiChip: {
-      styleOverrides: {
-        root: {
-          fontWeight: 600,
-          borderRadius: 2,
-          backgroundColor: "rgba(30, 58, 138, 0.1)",
-          color: "#1E3A8A",
-          border: "1px solid rgba(30, 58, 138, 0.2)",
-        },
-      },
-    },
-    MuiDivider: {
-      styleOverrides: {
-        root: {
-          borderColor: "rgba(255, 255, 255, 0.2)",
-        },
-      },
-    },
-    MuiCircularProgress: {
-      styleOverrides: {
-        root: {
-          color: "#1E3A8A",
-        },
-      },
-    },
-  },
-});
-
-const App: React.FC = () => {
+function App() {
   const [propertyData, setPropertyData] = useState<PropertyData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [calculating, setCalculating] = useState<boolean>(false);
   const [result, setResult] = useState<CashflowResult | null>(null);
   const [error, setError] = useState<string>("");
+  const [success, setSuccess] = useState<boolean>(false);
   const [extracting, setExtracting] = useState<boolean>(false);
   const [savedCalculations, setSavedCalculations] = useState<
     SavedCalculation[]
@@ -254,6 +88,7 @@ const App: React.FC = () => {
     maintenanceReserve: 7, // 7% of rent
     vacancy: 6, // 6% of rent
     capExReserve: 5, // 5% of rent
+    hoaFees: 0, // monthly
     otherExpenses: 0,
   });
 
@@ -261,79 +96,108 @@ const App: React.FC = () => {
   const [downPaymentPercentage, setDownPaymentPercentage] =
     useState<number>(20); // Default 20%
 
-  // Load property data and default settings on component mount
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Load property data from storage
-        const result = await chrome.storage.local.get([
-          "currentPropertyData",
-          "defaultSettings",
-        ]);
+  // Auto-analyze current page when popup opens
+  const autoAnalyzePage = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      setSuccess(false);
 
-        if (result.currentPropertyData) {
-          const propData: PropertyData = result.currentPropertyData;
-          setPropertyData(propData);
+      // Get current active tab
+      const tabs = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
 
-          // Set purchase price from property data
-          const defaultDownPaymentPercent =
-            result.defaultSettings?.downPaymentPercentage || 20;
-          const downPaymentAmount = Math.round(
-            propData.price * (defaultDownPaymentPercent / 100)
-          );
+      if (tabs[0]?.id) {
+        // Send message to content script to extract data
+        chrome.tabs.sendMessage(
+          tabs[0].id,
+          { type: "GET_PROPERTY_DATA" },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              console.error(
+                "❌ Error communicating with content script:",
+                chrome.runtime.lastError
+              );
+              setError(
+                "We could not extract data from this page. Please try refreshing the page."
+              );
+              setLoading(false);
+              return;
+            }
 
-          setInputs((prev) => ({
-            ...prev,
-            purchasePrice: propData.price,
-            downPayment: downPaymentAmount,
-            interestRate: result.defaultSettings?.interestRate || 5.5,
-            loanTerm: result.defaultSettings?.loanTerm || 25,
-            propertyTaxes: Math.round(
-              propData.price *
-                ((result.defaultSettings?.propertyTaxRate || 1.2) / 100)
-            ),
-            insurance: Math.round(
-              propData.price *
-                ((result.defaultSettings?.insuranceRate || 0.3) / 100)
-            ),
+            if (response?.data) {
+              console.log("✅ Data extracted successfully:", response.data);
+              setPropertyData(response.data);
 
-            vacancy: result.defaultSettings?.vacancyRate || 5,
-          }));
-        } else {
-          // Try to get data from current tab
-          const tabs = await chrome.tabs.query({
-            active: true,
-            currentWindow: true,
-          });
-          if (tabs[0]?.id) {
-            chrome.tabs.sendMessage(
-              tabs[0].id,
-              { type: "GET_PROPERTY_DATA" },
-              (response) => {
-                if (response?.data) {
-                  setPropertyData(response.data);
-                  setInputs((prev) => ({
-                    ...prev,
-                    purchasePrice: response.data.price,
-                  }));
-                } else {
-                  setError(
-                    'No data found. Click "Auto fill with AI" to extract data from the current webpage.'
+              // Auto-fill the form with extracted data
+              const newPrice = response.data.price || 0;
+              setInputs((prev) => {
+                const newInputs = {
+                  ...prev,
+                  purchasePrice: newPrice,
+                  propertyTaxes: response.data.propertyTax || 0,
+                  insurance: response.data.insurance || 0,
+                  hoaFees: response.data.hoaFees || 0,
+                };
+
+                // Update down payment percentage based on current dollar amount and new price
+                if (newPrice > 0 && newInputs.downPayment > 0) {
+                  const currentPercentage =
+                    (newInputs.downPayment / newPrice) * 100;
+                  setDownPaymentPercentage(
+                    Math.round(currentPercentage * 100) / 100
                   );
                 }
-              }
-            );
+
+                return newInputs;
+              });
+
+              // Store the data
+              chrome.storage.local.set({
+                currentPropertyData: response.data,
+                lastUpdated: Date.now(),
+                extractionMethod: "AUTO_ANALYSIS",
+              });
+
+              setError("");
+              setSuccess(true);
+
+              // Auto-calculate cashflow after AI extraction
+              setTimeout(() => {
+                try {
+                  const calculationResult = calculateCashflow({
+                    ...inputs,
+                    purchasePrice: newPrice,
+                    propertyTaxes: response.data.propertyTax || 0,
+                    insurance: response.data.insurance || 0,
+                    hoaFees: response.data.hoaFees || 0,
+                  });
+                  setResult(calculationResult);
+                } catch (err) {
+                  console.error("Auto-calculation error:", err);
+                }
+              }, 100);
+            } else {
+              setError("We could not auto extract the data from this page.");
+            }
+            setLoading(false);
           }
-        }
-      } catch (err) {
-        console.error("Error loading data:", err);
-        setError("Error loading property data. Please try again.");
-      } finally {
+        );
+      } else {
+        setError("We could not auto extract the data from this page.");
         setLoading(false);
       }
-    };
+    } catch (err) {
+      console.error("Error during auto-analysis:", err);
+      setError("We could not auto extract the data from this page.");
+      setLoading(false);
+    }
+  };
 
-    loadData();
+  useEffect(() => {
+    autoAnalyzePage();
   }, []);
 
   // Load saved calculations on mount
@@ -389,106 +253,140 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAIExtraction = async () => {
-    setExtracting(true);
-    setError("");
-
+  const refreshCurrentPage = async () => {
     try {
-      console.log("🤖 Starting AI extraction from popup...");
-
-      // Get current active tab
       const tabs = await chrome.tabs.query({
         active: true,
         currentWindow: true,
       });
 
       if (tabs[0]?.id) {
-        // Send message to content script to extract data
-        chrome.tabs.sendMessage(
-          tabs[0].id,
-          { type: "GET_PROPERTY_DATA" },
-          (response) => {
-            if (chrome.runtime.lastError) {
-              console.error(
-                "❌ Error communicating with content script:",
-                chrome.runtime.lastError
-              );
-              setError(
-                "Could not extract data from this page. Make sure you're on a valid webpage."
-              );
-              setExtracting(false);
-              return;
-            }
+        await chrome.tabs.reload(tabs[0].id);
 
-            if (response?.data) {
-              console.log("✅ Data extracted successfully:", response.data);
-              setPropertyData(response.data);
-
-              // Auto-fill the form with extracted data
-              const newPrice = response.data.price || 0;
-              setInputs((prev) => {
-                const newInputs = {
-                  ...prev,
-                  purchasePrice: newPrice,
-                  monthlyRent: response.data.estimatedRent || 0,
-                };
-
-                // Update down payment percentage based on current dollar amount and new price
-                if (newPrice > 0 && newInputs.downPayment > 0) {
-                  const currentPercentage =
-                    (newInputs.downPayment / newPrice) * 100;
-                  setDownPaymentPercentage(
-                    Math.round(currentPercentage * 100) / 100
-                  );
-                }
-
-                return newInputs;
-              });
-
-              // Store the data
-              chrome.storage.local.set({
-                currentPropertyData: response.data,
-                lastUpdated: Date.now(),
-                extractionMethod: "AI_POPUP",
-              });
-
-              setError("");
-
-              // Auto-calculate cashflow after AI extraction
-              setTimeout(() => {
-                try {
-                  const calculationResult = calculateCashflow({
-                    ...inputs,
-                    purchasePrice: newPrice,
-                    monthlyRent: response.data.estimatedRent || 0,
-                  });
-                  setResult(calculationResult);
-                  console.log(
-                    "✅ Auto-calculated cashflow after AI extraction"
-                  );
-                } catch (err) {
-                  console.error("Auto-calculation error:", err);
-                  // Don't show error to user for auto-calculation failures
-                }
-              }, 100); // Small delay to ensure state updates are complete
-            } else {
-              console.log("❌ No data returned from content script");
-              setError(
-                "Could not extract property data from this page. Try a different webpage or enter data manually."
-              );
-            }
-            setExtracting(false);
-          }
-        );
-      } else {
-        setError(
-          "No active tab found. Please make sure you have a webpage open."
-        );
+        // Reset app state and rerender
+        setLoading(true);
+        setError("");
+        setPropertyData(null);
+        setResult(null);
         setExtracting(false);
+
+        // Wait for page to load, then auto-analyze
+        setTimeout(() => {
+          autoAnalyzePage();
+        }, 2000); // 2 second delay to ensure page is fully loaded
       }
+    } catch (error) {
+      console.error("Error refreshing page:", error);
+    }
+  };
+
+  const handleAIExtraction = async () => {
+    setExtracting(true);
+    setError("");
+    setSuccess(false);
+
+    try {
+      // Get current active tab
+      const tabs = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+
+      if (!tabs[0]?.id) {
+        setError("We could not auto extract the data from this page.");
+        setExtracting(false);
+        return;
+      }
+
+      // Check if content script is available on this page
+      const tab = tabs[0];
+      if (
+        tab.url?.startsWith("chrome://") ||
+        tab.url?.startsWith("about:") ||
+        tab.url?.startsWith("chrome-extension://")
+      ) {
+        setError("We could not auto extract the data from this page.");
+        setExtracting(false);
+        return;
+      }
+
+      // Send message to content script to extract data
+      chrome.tabs.sendMessage(
+        tab.id!,
+        { type: "GET_PROPERTY_DATA" },
+        (response: any) => {
+          if (chrome.runtime.lastError) {
+            console.error(
+              "Error communicating with content script:",
+              chrome.runtime.lastError
+            );
+
+            setError("We could not auto extract the data from this page.");
+            setExtracting(false);
+            return;
+          }
+
+          if (response?.data) {
+            setPropertyData(response.data);
+
+            // Auto-fill the form with extracted data
+            const newPrice = response.data.price || 0;
+            setInputs((prev) => {
+              const newInputs = {
+                ...prev,
+                purchasePrice: newPrice,
+                propertyTaxes: response.data.propertyTax || 0,
+                insurance: response.data.insurance || 0,
+                hoaFees: response.data.hoaFees || 0,
+              };
+
+              // Update down payment percentage based on current dollar amount and new price
+              if (newPrice > 0 && newInputs.downPayment > 0) {
+                const currentPercentage =
+                  (newInputs.downPayment / newPrice) * 100;
+                setDownPaymentPercentage(
+                  Math.round(currentPercentage * 100) / 100
+                );
+              }
+
+              return newInputs;
+            });
+
+            // Store the data
+            chrome.storage.local.set({
+              currentPropertyData: response.data,
+              lastUpdated: Date.now(),
+              extractionMethod: "AI_POPUP",
+            });
+
+            setError("");
+            setSuccess(true);
+
+            // Auto-calculate cashflow after AI extraction
+            setTimeout(() => {
+              try {
+                const calculationResult = calculateCashflow({
+                  ...inputs,
+                  purchasePrice: newPrice,
+                  propertyTaxes: response.data.propertyTax || 0,
+                  insurance: response.data.insurance || 0,
+                  hoaFees: response.data.hoaFees || 0,
+                });
+                setResult(calculationResult);
+              } catch (err) {
+                console.error("Auto-calculation error:", err);
+              }
+            }, 100);
+          } else {
+            setError("We could not auto extract the data from this page.");
+          }
+          setExtracting(false);
+          console.log(extracting);
+        }
+      );
     } catch (err) {
       console.error("Error during AI extraction:", err);
-      setError("Error extracting data. Please try again.");
+      setError("We could not auto extract the data from this page.");
       setExtracting(false);
     }
   };
@@ -540,8 +438,6 @@ const App: React.FC = () => {
       setSaveFormData({ name: "", notes: "" });
       setShowSaveDialog(false);
       setError("");
-
-      console.log("✅ Calculation saved successfully");
     } catch (error) {
       console.error("Error saving calculation:", error);
       setError("Failed to save calculation. Please try again.");
@@ -553,7 +449,6 @@ const App: React.FC = () => {
       await deleteCalculation(id);
       const updatedCalculations = await getSavedCalculations();
       setSavedCalculations(updatedCalculations);
-      console.log("✅ Calculation deleted successfully");
     } catch (error) {
       console.error("Error deleting calculation:", error);
       setError("Failed to delete calculation. Please try again.");
@@ -573,7 +468,6 @@ const App: React.FC = () => {
     }
 
     setShowSavedList(false);
-    console.log("✅ Calculation loaded successfully");
   };
 
   const openSaveDialog = () => {
@@ -698,43 +592,50 @@ const App: React.FC = () => {
         <Box sx={{ p: 3 }}>
           {error && (
             <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
-              {error}
+              <Box>
+                We could not auto extract the data from this page. Please try{" "}
+                <Box
+                  component="span"
+                  onClick={refreshCurrentPage}
+                  sx={{
+                    textDecoration: "underline",
+                    cursor: "pointer",
+                    color: "inherit",
+                    "&:hover": {
+                      textDecoration: "none",
+                    },
+                  }}
+                >
+                  refreshing the page
+                </Box>
+                .
+              </Box>
             </Alert>
           )}
 
-          {/* AI Extraction Button */}
-          <Button
-            variant="contained"
-            onClick={handleAIExtraction}
-            disabled={extracting}
-            startIcon={
-              extracting ? (
-                <CircularProgress size={16} color="inherit" />
-              ) : (
-                <AutoAwesome sx={{ fontSize: 18 }} />
-              )
-            }
-            fullWidth
-            sx={{
-              mb: 3,
-              py: 1.5,
-              background: "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)",
-              color: "#FFFFFF",
-              boxShadow: "0 4px 14px 0 rgba(245, 158, 11, 0.3)",
-              "&:hover": {
-                background: "linear-gradient(135deg, #D97706 0%, #B45309 100%)",
-                boxShadow: "0 6px 20px 0 rgba(245, 158, 11, 0.4)",
-                transform: "translateY(-1px)",
-              },
-              "&:disabled": {
-                background: "#64748B",
-                color: "#FFFFFF",
-                transform: "none",
-              },
-            }}
-          >
-            {extracting ? "🤖 Extracting with AI..." : "Auto Fill"}
-          </Button>
+          {success && (
+            <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>
+              <Box>
+                We were able to successfully extract the data for this page! If
+                the data was not correct,{" "}
+                <Box
+                  component="span"
+                  onClick={handleAIExtraction}
+                  sx={{
+                    textDecoration: "underline",
+                    cursor: "pointer",
+                    color: "inherit",
+                    "&:hover": {
+                      textDecoration: "none",
+                    },
+                  }}
+                >
+                  try again
+                </Box>
+                .
+              </Box>
+            </Alert>
+          )}
 
           {/* Property Information */}
           {propertyData && (
@@ -760,11 +661,10 @@ const App: React.FC = () => {
               >
                 <Typography
                   variant="body2"
-                  noWrap
                   title={propertyData.address}
-                  sx={{ mb: 1, fontWeight: 500 }}
+                  sx={{ mb: 1, fontWeight: 500, wordBreak: "break-word" }}
                 >
-                  {propertyData.address}
+                  {propertyData.address || "Address not available"}
                 </Typography>
                 <Box
                   sx={{
@@ -787,6 +687,12 @@ const App: React.FC = () => {
                   {propertyData.bathrooms && (
                     <Chip
                       label={`${propertyData.bathrooms} bath`}
+                      size="small"
+                    />
+                  )}
+                  {propertyData.sqft && (
+                    <Chip
+                      label={`${propertyData.sqft.toLocaleString()} sqft`}
                       size="small"
                     />
                   )}
@@ -983,8 +889,19 @@ const App: React.FC = () => {
             />
           </Box>
 
-          {/* Other Expenses */}
+          {/* HOA Fees and Other Expenses */}
           <Box sx={{ display: "flex", gap: 1 }}>
+            <TextField
+              label="Monthly HOA Fees"
+              value={inputs.hoaFees}
+              onChange={handleInputChange("hoaFees")}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">$</InputAdornment>
+                ),
+              }}
+              sx={{ flex: 1 }}
+            />
             <TextField
               label="Monthly Other"
               value={inputs.otherExpenses}
@@ -1326,6 +1243,6 @@ const App: React.FC = () => {
       </Box>
     </ThemeProvider>
   );
-};
+}
 
 export default App;

@@ -37,6 +37,7 @@ export const calculateCashflow = (inputs: CashflowInputs): CashflowResult => {
     maintenanceReserve,
     vacancy,
     capExReserve,
+    hoaFees,
     otherExpenses,
   } = inputs;
 
@@ -66,8 +67,10 @@ export const calculateCashflow = (inputs: CashflowInputs): CashflowResult => {
   const monthlyVacancyAllowance = monthlyRent * (vacancy / 100);
   // 7. Capital expenditure reserve (% of rent)
   const monthlyCapExReserve = monthlyRent * (capExReserve / 100);
-  // 8. Other expenses (annual ÷ 12)
-  const monthlyOtherExpenses = otherExpenses / 12;
+  // 8. HOA fees (monthly)
+  const monthlyHoaFees = hoaFees;
+  // 9. Other expenses (monthly)
+  const monthlyOtherExpenses = otherExpenses;
 
   // Total Monthly Expenses
   const monthlyExpenses =
@@ -78,6 +81,7 @@ export const calculateCashflow = (inputs: CashflowInputs): CashflowResult => {
     monthlyMaintenanceReserve +
     monthlyVacancyAllowance +
     monthlyCapExReserve +
+    monthlyHoaFees +
     monthlyOtherExpenses;
 
   // Monthly Cash Flow = Monthly Rental Income - Monthly Expenses
@@ -97,6 +101,7 @@ export const calculateCashflow = (inputs: CashflowInputs): CashflowResult => {
     monthlyPropertyManagement * 12 +
     monthlyMaintenanceReserve * 12 +
     monthlyCapExReserve * 12 +
+    hoaFees * 12 +
     otherExpenses * 12;
 
   const grossAnnualIncome = monthlyRent * 12;

@@ -6,8 +6,10 @@ export interface PropertyData {
   bathrooms?: number;
   sqft?: number;
   yearBuilt?: number;
-  listingId?: string;
   url?: string;
+  propertyTax?: number; // monthly
+  insurance?: number; // monthly
+  hoaFees?: number; // monthly
 }
 
 export interface CashflowInputs {
@@ -16,13 +18,14 @@ export interface CashflowInputs {
   interestRate: number;
   loanTerm: number; // years
   monthlyRent: number;
-  propertyTaxes: number; // annual
-  insurance: number; // annual
+  propertyTaxes: number; // monthly
+  insurance: number; // monthly
   propertyManagement: number; // percentage of rent
   maintenanceReserve: number; // percentage of rent
   vacancy: number; // percentage
   capExReserve: number; // percentage of rent (capital expenditures)
-  otherExpenses: number; // annual
+  hoaFees: number; // monthly
+  otherExpenses: number; // monthly
 }
 
 export interface CashflowResult {
@@ -52,8 +55,8 @@ export interface ChromeExtensionMessage {
     | "PROPERTY_DATA"
     | "CALCULATE_CASHFLOW"
     | "GET_PROPERTY_DATA"
+    | "GET_PROPERTY_DATA_HTML"
     | "CAPTURE_SCREENSHOT"
-    | "ANALYZE_SCREENSHOT"
     | "ANALYZE_HTML_CONTENT";
   data?: any;
 }
