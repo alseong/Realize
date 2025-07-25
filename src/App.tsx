@@ -50,6 +50,7 @@ import {
   calculateMinimumDownPayment,
   calculateDownPaymentPercentage,
   calculateDownPaymentAmount,
+  calculateCMHCPremium,
   formatCurrency,
   formatPercentage,
 } from "./utils/cashflow";
@@ -60,6 +61,9 @@ import {
   loadCalculation,
   formatDate,
   exportToExcel,
+  saveCurrentCalculation,
+  loadCurrentCalculation,
+  clearCurrentCalculation,
 } from "./utils/storage";
 
 function App() {
@@ -129,7 +133,36 @@ function App() {
           cachedData.cachedUrl === currentUrl &&
           cachedData.lastUpdated;
 
-        if (hasCachedData) {
+        // Try to load current calculation first
+        const currentCalculation = await loadCurrentCalculation();
+
+        console.log("🔍 App initialization debug:");
+        console.log(
+          "- Current calculation:",
+          currentCalculation ? "found" : "not found"
+        );
+        console.log("- Has cached data:", hasCachedData);
+        console.log("- Cached URL:", cachedData.cachedUrl);
+        console.log("- Current URL:", currentUrl);
+
+        if (currentCalculation) {
+          console.log("✅ Loading current calculation from storage");
+          setInputs(currentCalculation.inputs);
+          setResult(currentCalculation.results);
+          setPropertyData(currentCalculation.propertyData);
+
+          // Update down payment percentage
+          if (currentCalculation.inputs.purchasePrice > 0) {
+            const percentage =
+              (currentCalculation.inputs.downPayment /
+                currentCalculation.inputs.purchasePrice) *
+              100;
+            setDownPaymentPercentage(Math.round(percentage * 100) / 100);
+          }
+
+          setError("");
+          setLoading(false);
+        } else if (hasCachedData) {
           console.log("✅ Using cached data for current page");
           setPropertyData(cachedData.currentPropertyData);
 
@@ -301,23 +334,93 @@ function App() {
         return;
       }
 
-      // Send message to content script to extract data
+      // Always try to inject content script - this ensures it works for existing tabs
+      console.log(
+        "🔍 Attempting to inject content script into tab:",
+        tab.id,
+        "URL:",
+        tab.url
+      );
+
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id! },
+          files: ["assets/content.js"],
+        });
+        console.log("✅ Content script injected successfully");
+
+        // Small delay to ensure script is loaded
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      } catch (injectionError) {
+        console.log("⚠️ Content script injection failed:", injectionError);
+
+        // If injection fails, try to refresh the page and inject again
+        try {
+          console.log("🔄 Attempting to reload tab and inject script...");
+          await chrome.tabs.reload(tab.id!);
+
+          // Wait for page to load
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+
+          // Try injection again
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id! },
+            files: ["assets/content.js"],
+          });
+          console.log("✅ Content script injected after reload");
+
+          // Additional delay after reload
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        } catch (reloadError) {
+          console.log("❌ Failed to inject after reload:", reloadError);
+          setError("Please refresh the page manually and try again.");
+          setExtracting(false);
+          return;
+        }
+      }
+
+      // Send message to content script to extract data with timeout
+      const messageTimeout = setTimeout(() => {
+        setError("Request timed out. Please refresh the page and try again.");
+        setExtracting(false);
+      }, 10000); // 10 second timeout
+
       chrome.tabs.sendMessage(
         tab.id!,
         { type: "GET_PROPERTY_DATA" },
         (response: any) => {
+          clearTimeout(messageTimeout); // Clear timeout if we get a response
+
           if (chrome.runtime.lastError) {
             console.error(
               "Error communicating with content script:",
               chrome.runtime.lastError
             );
 
-            setError("We could not auto extract the data from this page.");
+            // Check if the error is due to content script not being available
+            if (
+              chrome.runtime.lastError.message?.includes(
+                "Could not establish connection"
+              )
+            ) {
+              setError(
+                "Please refresh the page and try again. The extension needs to reconnect to this page."
+              );
+            } else {
+              setError("We could not auto extract the data from this page.");
+            }
             setExtracting(false);
             return;
           }
 
           if (response?.data) {
+            console.log("✅ Property data received in popup:", response.data);
+            console.log("🔍 Financial data received:", {
+              propertyTax: response.data.propertyTax,
+              insurance: response.data.insurance,
+              monthlyRent: response.data.monthlyRent,
+              interestRate: response.data.interestRate,
+            });
             setPropertyData(response.data);
 
             // Auto-fill the form with extracted data
@@ -365,9 +468,16 @@ function App() {
             // Auto-calculate cashflow after AI extraction
             setTimeout(() => {
               try {
+                // Calculate down payment based on percentage if not set
+                const downPaymentAmount =
+                  inputs.downPayment > 0
+                    ? inputs.downPayment
+                    : newPrice * (downPaymentPercentage / 100);
+
                 const calculationResult = calculateCashflow({
                   ...inputs,
                   purchasePrice: newPrice,
+                  downPayment: downPaymentAmount,
                   propertyTaxes: response.data.propertyTax || 0,
                   insurance: response.data.insurance || 0,
                   hoaFees: response.data.hoaFees || 0,
@@ -375,6 +485,23 @@ function App() {
                   interestRate: response.data.interestRate || 6.5,
                 });
                 setResult(calculationResult);
+
+                // Save current calculation to storage
+                const updatedInputs = {
+                  ...inputs,
+                  purchasePrice: newPrice,
+                  downPayment: downPaymentAmount,
+                  propertyTaxes: response.data.propertyTax || 0,
+                  insurance: response.data.insurance || 0,
+                  hoaFees: response.data.hoaFees || 0,
+                  monthlyRent: response.data.monthlyRent || 0,
+                  interestRate: response.data.interestRate || 6.5,
+                };
+                saveCurrentCalculation(
+                  updatedInputs,
+                  calculationResult,
+                  response.data
+                );
               } catch (err) {
                 console.error("Auto-calculation error:", err);
               }
@@ -398,8 +525,12 @@ function App() {
     setError("");
 
     try {
+      console.log(`🔍 Calculate Debug: inputs=`, inputs);
       const calculationResult = calculateCashflow(inputs);
       setResult(calculationResult);
+
+      // Save current calculation to storage
+      saveCurrentCalculation(inputs, calculationResult, propertyData);
     } catch (err) {
       setError("Error calculating cashflow. Please check your inputs.");
       console.error("Calculation error:", err);
@@ -570,53 +701,51 @@ function App() {
           <Toolbar sx={{ minHeight: 48, px: 2 }}>
             <Villa sx={{ color: "#F59E0B", fontSize: 24 }} />
             <Box sx={{ flexGrow: 1 }} />
-            <Tooltip title="Clear fields">
-              <Button
-                onClick={() => {
-                  setPropertyData(null);
-                  setResult(null);
-                  setError("");
-                  setInputs({
-                    purchasePrice: 0,
-                    downPayment: 0,
-                    interestRate: 5.5,
-                    loanTerm: 25,
-                    monthlyRent: 0,
-                    propertyTaxes: 0,
-                    insurance: 0,
-                    propertyManagement: 8,
-                    maintenanceReserve: 7,
-                    vacancy: 6,
-                    capExReserve: 5,
-                    hoaFees: 0,
-                    otherExpenses: 0,
-                  });
-                  setDownPaymentPercentage(20);
-                }}
-                sx={{
-                  color: "#FFFFFF",
-                  fontSize: "14px",
-                  fontWeight: 400,
-                  mr: 1,
-                  textTransform: "none",
-                  minWidth: "auto",
-                  padding: "6px 8px",
-                  "&:hover": {
-                    backgroundColor: "transparent",
-                    color: "#FFFFFF",
-                  },
-                  "&:focus": {
-                    outline: "none",
-                  },
-                  "&:active": {
-                    backgroundColor: "transparent",
-                    color: "#FFFFFF",
-                  },
-                }}
-              >
-                Clear
-              </Button>
-            </Tooltip>
+            <Button
+              onClick={async () => {
+                setPropertyData(null);
+                setResult(null);
+                setError("");
+                setInputs({
+                  purchasePrice: 0,
+                  downPayment: 0,
+                  interestRate: 5.5,
+                  loanTerm: 25,
+                  monthlyRent: 0,
+                  propertyTaxes: 0,
+                  insurance: 0,
+                  propertyManagement: 8,
+                  maintenanceReserve: 7,
+                  vacancy: 6,
+                  capExReserve: 5,
+                  hoaFees: 0,
+                  otherExpenses: 0,
+                });
+                setDownPaymentPercentage(20);
+
+                // Clear current calculation from storage
+                await clearCurrentCalculation();
+
+                // Also clear cached property data
+                await chrome.storage.local.remove([
+                  "currentPropertyData",
+                  "lastUpdated",
+                  "cachedUrl",
+                  "extractionMethod",
+                ]);
+              }}
+              sx={{
+                color: "#FFFFFF",
+                fontSize: "14px",
+                fontWeight: 400,
+                mr: 1,
+                textTransform: "none",
+                minWidth: "auto",
+                padding: "6px 8px",
+              }}
+            >
+              Clear
+            </Button>
             <Tooltip title="Save current calculation with notes">
               <IconButton
                 onClick={openSaveDialog}
@@ -662,38 +791,36 @@ function App() {
             </Alert>
           )}
 
-          {/* Auto Fill Button */}
-          {!propertyData && !loading && (
-            <Box sx={{ mb: 3 }}>
-              <Button
-                onClick={handleAIExtraction}
-                disabled={extracting}
-                variant="contained"
-                fullWidth
-                startIcon={
-                  extracting ? <CircularProgress size={16} /> : <AutoAwesome />
-                }
-                sx={{
-                  backgroundColor: "#F59E0B",
-                  color: "#FFFFFF",
-                  textTransform: "none",
-                  fontWeight: 600,
-                  borderRadius: "8px",
-                  boxShadow: "0 2px 4px rgba(245, 158, 11, 0.3)",
-                  "&:hover": {
-                    backgroundColor: "#D97706",
-                    boxShadow: "0 4px 8px rgba(245, 158, 11, 0.4)",
-                  },
-                  "&:disabled": {
-                    backgroundColor: "#9CA3AF",
-                    boxShadow: "none",
-                  },
-                }}
-              >
-                {extracting ? "Extracting..." : "Auto Fill Data"}
-              </Button>
-            </Box>
-          )}
+          {/* Auto Fill Button - Always at the top */}
+          <Box sx={{ mb: 3 }}>
+            <Button
+              onClick={handleAIExtraction}
+              disabled={extracting || loading}
+              variant="contained"
+              fullWidth
+              startIcon={
+                extracting ? <CircularProgress size={16} /> : <AutoAwesome />
+              }
+              sx={{
+                backgroundColor: "#F59E0B",
+                color: "#FFFFFF",
+                textTransform: "none",
+                fontWeight: 600,
+                borderRadius: "8px",
+                boxShadow: "0 2px 4px rgba(245, 158, 11, 0.3)",
+                "&:hover": {
+                  backgroundColor: "#D97706",
+                  boxShadow: "0 4px 8px rgba(245, 158, 11, 0.4)",
+                },
+                "&:disabled": {
+                  backgroundColor: "#9CA3AF",
+                  boxShadow: "none",
+                },
+              }}
+            >
+              {extracting ? "Extracting..." : "Auto Fill Data"}
+            </Button>
+          </Box>
 
           {/* Property Information */}
           {propertyData && (
@@ -859,29 +986,65 @@ function App() {
             </Box>
             {/* Monthly Mortgage Alert */}
             {inputs.purchasePrice > 0 && inputs.downPayment > 0 && (
-              <Alert
-                severity="info"
-                sx={{
-                  mb: 2,
-                  borderRadius: 2,
-                  backgroundColor: "rgba(30, 58, 138, 0.1)",
-                  border: "1px solid rgba(30, 58, 138, 0.2)",
-                  "& .MuiAlert-icon": {
-                    color: "#1E3A8A",
-                  },
-                }}
-              >
-                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  Monthly Mortgage:{" "}
-                  {formatCurrency(
-                    calculateMortgagePayment(
-                      inputs.purchasePrice - inputs.downPayment,
-                      inputs.interestRate,
-                      inputs.loanTerm
-                    )
-                  )}
-                </Typography>
-              </Alert>
+              <>
+                <Alert
+                  severity="info"
+                  sx={{
+                    mb: 2,
+                    borderRadius: 2,
+                    backgroundColor: "rgba(30, 58, 138, 0.1)",
+                    border: "1px solid rgba(30, 58, 138, 0.2)",
+                    "& .MuiAlert-icon": {
+                      color: "#1E3A8A",
+                    },
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    Monthly Mortgage:{" "}
+                    {formatCurrency(
+                      result?.monthlyMortgage ||
+                        (() => {
+                          console.log(
+                            `🔍 Alert Debug: purchasePrice=${inputs.purchasePrice}, downPayment=${inputs.downPayment}, interestRate=${inputs.interestRate}`
+                          );
+                          const baseMortgageAmount =
+                            inputs.purchasePrice - inputs.downPayment;
+                          const cmhc = calculateCMHCPremium(
+                            baseMortgageAmount,
+                            inputs.purchasePrice
+                          );
+                          const totalMortgageAmount =
+                            baseMortgageAmount + cmhc.premium;
+                          return calculateMortgagePayment(
+                            totalMortgageAmount,
+                            inputs.interestRate,
+                            inputs.loanTerm
+                          );
+                        })()
+                    )}
+                    {(() => {
+                      const baseMortgageAmount =
+                        inputs.purchasePrice - inputs.downPayment;
+                      const cmhc = calculateCMHCPremium(
+                        baseMortgageAmount,
+                        inputs.purchasePrice
+                      );
+
+                      if (cmhc.premium > 0) {
+                        return (
+                          <>
+                            <br />
+                            💰 CMHC Premium: {formatCurrency(cmhc.premium)} (
+                            {cmhc.rate}% rate, {cmhc.ltv}% LTV) • Spread across
+                            loan term
+                          </>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </Typography>
+                </Alert>
+              </>
             )}
             <TextField
               label="Monthly Rent"
@@ -1140,6 +1303,16 @@ function App() {
                       {formatCurrency(result.monthlyMortgage)}
                     </Typography>
                   </Box>
+                  {result.cmhcPremium && result.cmhcPremium > 0 && (
+                    <Box>
+                      <Typography variant="body2" color="warning.main">
+                        - CMHC Premium ({result.cmhcRate}% rate):
+                      </Typography>
+                      <Typography variant="body2" color="warning.main">
+                        {formatCurrency(result.cmhcPremium)} (added to mortgage)
+                      </Typography>
+                    </Box>
+                  )}
                   <Divider />
                   <Box>
                     <Typography variant="body2" fontWeight="bold">

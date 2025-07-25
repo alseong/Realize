@@ -6,7 +6,7 @@ const GROQ_API_KEY = "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";
 /**
  * Extract clean text content from HTML for AI analysis
  */
-const extractCleanText = (htmlContent: string, url: string): string => {
+function extractCleanText(htmlContent: string, url: string): string {
   try {
     // Check if this is a Realtor.ca page
     const isRealtorCa = url.includes("realtor.ca");
@@ -121,15 +121,15 @@ const extractCleanText = (htmlContent: string, url: string): string => {
     console.error("Error extracting text:", error);
     return htmlContent.substring(0, 8000); // Fallback with limited content
   }
-};
+}
 
 /**
  * Analyze HTML content using Groq API
  */
-const analyzeHtmlContentWithGroq = async (
+async function analyzeHtmlContentWithGroq(
   htmlContent: string,
   url: string
-): Promise<PropertyData | null> => {
+): Promise<PropertyData | null> {
   try {
     // Extract clean text content
     const cleanText = extractCleanText(htmlContent, url);
@@ -139,74 +139,133 @@ const analyzeHtmlContentWithGroq = async (
         ? cleanText.substring(0, maxLength) + "...[truncated]"
         : cleanText;
 
-    const prompt = `You are a data extraction tool. Analyze this real estate listing text content and extract ONLY the property information as JSON.
+    const prompt = `Here is the provided listing details:
+${truncatedText}
 
-CRITICAL: 
-1. Return ONLY valid JSON, no code, no explanations, no other text
-2. You MUST analyze the actual HTML content provided below
-3. Do NOT return example data - extract real data from the HTML
-4. If you cannot find specific data in the HTML, return null for that field
+PROMPT:
+You are a data extraction tool. Analyze this real estate listing text content and extract ONLY the property information as JSON. Here are the fields you need to extract:
 
-IMPORTANT PRICE EXTRACTION RULES:
-- Look for the MAIN listing price, usually the largest/most prominent price on the page
-- Ignore any prices that are clearly not the main listing price 
-- Remove all commas and currency symbols, return only the number
-- If you see multiple prices, choose the one that appears to be the main listing price. Sometimes there might be related properties, so choose the one that is the main listing price.
-
-PROPERTY TAX EXTRACTION:
-- Look for: 'property tax', 'taxes', 'annual tax', 'tax assessment', 'tax rate', 'property taxes', 'tax'
-- Common locations: property details, cost breakdown, listing facts, property information
-- Search in: data tables, property facts, cost estimates, monthly costs
-- Look for numbers near these terms: $X,XXX/year, $X,XXX annually, $X,XXX per year
-- If yearly amount: divide by 12 for monthly
-- If monthly amount: use as is
-- If not found: return null
-
-INSURANCE EXTRACTION:
-- Look for: 'home insurance', 'property insurance', 'homeowners insurance', 'insurance estimate', 'insurance cost', 'home insurance cost', 'insurance'
-- May be listed as annual or monthly
-- Search in: property details, cost breakdown, monthly costs, insurance section
-- Look for numbers near these terms: $X,XXX/year, $X,XXX annually, $X,XXX per year, $X,XXX/month
-- If yearly: divide by 12
-- If monthly: use as is
-- If not found: return null
-
-HOA/CONDO FEES EXTRACTION:
-- Look for: 'HOA', 'condo fee', 'maintenance fee', 'strata fee', 'common charges', 'monthly maintenance', 'HOA fee', 'condo fees', 'association fee', 'maintenance'
-- Usually already monthly, but verify the time period
-- Search in: property details, monthly costs, HOA section, condo information
-- Look for numbers near these terms: $X,XXX/month, $X,XXX per month, $X,XXX monthly
-- If yearly: divide by 12
-- If monthly: use as is
-- If not found: return null
-
-IMPORTANT RULES:
-1. Always check if amounts are 'per year', 'annually', 'yearly' - if so, divide by 12
-2. Look for '/month', 'monthly', 'per month' indicators
-3. Return actual numbers only (no currency symbols)
-4. If a field says something like '$3,600/year' return 300 (3600/12)
-6. Search thoroughly in all text content, not just obvious labels
-7. Look for amounts near tax/insurance/HOA related text
-
-Extract these fields from the HTML:
 - price: Main listing price as number (remove commas and currency symbols)
 - address: Full address string (look for the main property address, usually in headings, titles, or prominent text)
-- propertyType: Type like "Single Family", "Condo", "Apartment", etc.
+- propertyType: Type like "Single Family", "Multi-Family", "Duplex", "Triplex", "Condo", "Apartment", etc.
 - bedrooms: Total bedrooms as number (add "3 + 1" = 4)
 - bathrooms: Bathrooms as number (can be decimal)
 - sqft: Square footage as number (null if not available)
-- propertyTax: Monthly property tax amount (null if not found)
-- insurance: Monthly insurance amount (null if not found)
-- hoaFees: Monthly HOA/condo fees (null if not found)
+- propertyTax: Monthly property tax amount (MUST estimate if not found). If the value is greater than $1000, it is likely a yearly amount and MUST be divided by 12 to get the monthly amount
+- insurance: Monthly insurance amount (MUST estimate if not found)
+- hoaFees: Monthly HOA/condo fees (MUST estimate if not found)
+- monthlyRent: Estimated monthly rent based on property price, type, and characteristics (MUST estimate)
+- interestRate: Estimated current mortgage interest rate (MUST estimate) 
 
-IMPORTANT: For the address, look for:
+CRITICAL: 
+1. Return ONLY valid JSON, no code, no explanations, no other text
+2. You MUST analyze the provided real estate data provided below
+3. Do NOT return example data - extract real data from the HTML
+4. ALWAYS try to extract actual data first - ONLY estimate if data is completely unavailable
+5. CRITICAL: You MUST estimate propertyTax, insurance, hoaFees, monthlyRent, and interestRate if not found in content - NEVER return null for these fields
+
+PRICE EXTRACTION RULES:
+- Look for the MAIN listing price, usually the largest/most prominent price on the page
+- Ignore any prices that are clearly not the main listing price 
+- Remove all commas and currency symbols, return only the number
+- If you see multiple prices, choose the one that appears to be the main listing price
+
+ADDRESS EXTRACTION RULES:
 - Page titles containing addresses
 - Headings (h1, h2, h3) with addresses
 - Text near "Address" labels
 - Prominent text that looks like a street address
 
-Text content to analyze:
-${truncatedText}`;
+PROPERTY TAX EXTRACTION:
+- Look for: 'property tax', 'taxes', 'annual tax', 'tax assessment', 'tax rate', 'property taxes', 'tax'
+- Common locations: property details, cost breakdown, listing facts, property information
+- Search thoroughly in ALL text content before giving up
+- If yearly amount: divide by 12 for monthly
+- If monthly amount: use as is
+- If not found: return null
+
+INSURANCE EXTRACTION:
+- Look for: 'home insurance', 'property insurance', 'homeowners insurance', 'insurance estimate', 'insurance cost'
+- Search thoroughly in ALL text content before giving up
+- If yearly: divide by 12, if monthly: use as is
+- If not found: return null
+
+HOA/CONDO FEES EXTRACTION:
+- Look for: 'HOA', 'condo fee', 'maintenance fee', 'strata fee', 'common charges', 'monthly maintenance'
+- Search thoroughly in ALL text content before giving up
+- Usually already monthly, but verify the time period
+- If not found: return null
+
+IMPORTANT EXTRACTION RULES:
+1. Always check if amounts are 'per year', 'annually', 'yearly' - if so, divide by 12
+2. Look for '/month', 'monthly', 'per month' indicators
+3. Return actual numbers only (no currency symbols)
+4. Search thoroughly in all text content, not just obvious labels
+
+ESTIMATION RULES (MANDATORY - You MUST estimate these fields if not found in content):
+
+PROPERTY TAX ESTIMATION:
+- Calculate as: (property_price × annual_tax_rate) ÷ 12
+- Annual tax rates by property type and value:
+  - Single Family homes: 0.8-1.2% (use 1.0% as default)
+  - Condos/Apartments: 0.9-1.3% (use 1.1% as default)
+  - Townhouses: 0.8-1.1% (use 0.95% as default)
+  - Luxury properties (>$1M): 1.0-1.5% (use 1.2% as default)
+  - Lower-value properties (<$300K): 0.6-1.0% (use 0.8% as default)
+- General default: 1.0% if property type unclear
+- Example: $500,000 single family home = ($500,000 × 0.01) ÷ 12 = $417/month
+
+INSURANCE ESTIMATION:
+- Calculate as: (property_price × annual_insurance_rate) ÷ 12
+- Annual insurance rates:
+  - Properties under $400K: 0.25% of value
+  - Properties $400K-$800K: 0.30% of value
+  - Properties over $800K: 0.35% of value
+  - Add 25% for older homes (pre-1980)
+  - Add 15% for high-risk areas (coastal, wildfire zones)
+- Example: $500,000 home = ($500,000 × 0.003) ÷ 12 = $125/month
+
+HOA/CONDO FEES ESTIMATION:
+- Single Family: $0 (no HOA fees typically)
+- Townhouse: $100-300/month based on value:
+  - Under $400K: $150
+  - $400K-$700K: $200
+  - Over $700K: $250
+- Condo/Apartment: $200-600/month based on value and amenities:
+  - Under $300K: $250
+  - $300K-$500K: $350
+  - $500K-$800K: $450
+  - Over $800K: $550
+  - Add $100 for luxury buildings with extensive amenities
+
+MONTHLY RENT ESTIMATION:
+- Calculate as: property_price × monthly_rent_ratio
+- Base rent ratios by property type (conservative estimates):
+  - Single Family: 0.5% of property value
+  - Townhouse: 0.6% of property value  
+  - Condo 1-2 bed: 0.6% of property value
+  - Condo 3+ bed: 0.5% of property value
+  - Apartment: 0.7% of property value
+  - Multifamily (2-4 units): 0.8% of property value
+  - Multifamily (5+ units): 0.9% of property value
+
+QUICK ADJUSTMENTS:
+- High-demand/urban areas: -0.2%
+- Small towns/rural: +0.2%
+- New/renovated (post-2010): +0.1%
+- Older properties (pre-1980): -0.1%
+- Luxury properties (>$800K): -0.1%
+
+INTEREST RATE ESTIMATION:
+- Base rates:
+  - US: 6.5%
+  - Canada: 4.0%
+  - Figure out the country from the address or URL (.ca is canada)
+- Adjustments:
+  - Properties over $1M: add 0.25%
+  - Properties under $300K: subtract 0.25%
+
+ `;
 
     const response = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
@@ -238,21 +297,27 @@ ${truncatedText}`;
     }
 
     const aiResponse = result.choices[0].message.content;
+    console.log("🔍 Raw AI response:", aiResponse);
 
     // Parse the JSON response
     let propertyData;
     try {
       propertyData = JSON.parse(aiResponse);
+      console.log("🔍 Parsed AI JSON:", propertyData);
     } catch (parseError) {
+      console.log("❌ Failed to parse AI JSON:", parseError);
       // Try to extract JSON from response if it's wrapped in other text
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
           propertyData = JSON.parse(jsonMatch[0]);
+          console.log("🔍 Parsed extracted JSON:", propertyData);
         } catch {
+          console.log("❌ Failed to parse extracted JSON");
           return null;
         }
       } else {
+        console.log("❌ No JSON found in AI response");
         return null;
       }
     }
@@ -263,153 +328,18 @@ ${truncatedText}`;
       url,
     };
 
+    console.log("🔍 Final property data being returned:", finalData);
+
     return finalData;
   } catch (error) {
     return null;
   }
-};
+}
 
 // Handle extension installation
 chrome.runtime.onInstalled.addListener((_details) => {
   // Extension installed or updated
 });
-
-/**
- * Analyze property data specifically for financial data (tax, insurance, HOA)
- */
-const analyzePropertyDataForFinancials = async (
-  inputPropertyData: PropertyData,
-  url: string
-): Promise<PropertyData | null> => {
-  try {
-    console.log("🔍 Starting financial data analysis for property:", {
-      address: inputPropertyData.address,
-      price: inputPropertyData.price,
-      propertyType: inputPropertyData.propertyType,
-    });
-    const prompt = `You are a specialized financial data analysis tool. Analyze the provided property data and estimate the monthly financial costs and interest rate, then return ONLY the financial information as JSON.
-
-CRITICAL: 
-1. Return ONLY valid JSON, no code, no explanations, no other text
-2. Analyze the provided property data to estimate financial costs and interest rate
-3. Use property price, type, location, and characteristics to estimate monthly costs
-4. If you cannot estimate specific data, return null for that field
-5. Focus ONLY on financial data: monthly rent, property tax, insurance, and interest rate
-
-MONTHLY RENT ESTIMATION:
-- Estimate monthly rent based on property price, type, bedrooms, bathrooms, and location
-- Use typical rent-to-price ratios for the property type and location
-- For single family homes: typically 0.5-1% of property value per month
-- For condos: typically 0.6-1.2% of property value per month
-- Consider property characteristics (bedrooms, bathrooms, sqft) for more accurate estimates
-- Return estimated monthly rent amount
-- If cannot estimate: return null
-
-MONTHLY PROPERTY TAX ESTIMATION:
-- Estimate monthly property tax based on property price and location
-- Use typical property tax rates for the area (usually 0.5-2% of property value annually)
-- Common rates: 0.5-1.5% of property value per year, divided by 12 for monthly
-- Consider property type and location for more accurate estimates
-- Return estimated monthly property tax amount
-- If cannot estimate: return null
-
-MONTHLY INSURANCE ESTIMATION:
-- Estimate monthly insurance based on property price, type, and location
-- Use typical insurance rates for the property type and area
-- Common rates: 0.2-0.5% of property value annually, divided by 12 for monthly
-- Consider property characteristics and location for more accurate estimates
-- Return estimated monthly insurance amount
-- If cannot estimate: return null
-
-INTEREST RATE ESTIMATION:
-- Estimate current mortgage interest rate based on property price, location, and market conditions
-- Consider current market rates (typically 5-7% for conventional mortgages)
-- Higher property prices may qualify for better rates
-- Consider location (urban vs rural, different provinces may have different rates)
-- Property type may affect rates (primary residence vs investment property)
-- Return estimated annual interest rate as a percentage (e.g., 6.5 for 6.5%)
-- If cannot estimate: return null
-
-IMPORTANT RULES:
-1. Use the property price as the primary factor for all estimates
-2. Consider property type (single family, condo, townhouse) for different rate adjustments
-3. Consider location and property characteristics for more accurate estimates
-4. Return actual numbers only (no currency symbols)
-5. Be conservative with estimates - it's better to underestimate than overestimate
-6. Use typical market rates and ratios for the property type and location
-7. For interest rate, consider current market conditions and property characteristics
-
-Extract these fields from property data analysis:
-- monthlyRent: Estimated monthly rent amount (null if cannot estimate)
-- propertyTax: Estimated monthly property tax amount (null if cannot estimate)
-- insurance: Estimated monthly insurance amount (null if cannot estimate)
-- interestRate: Estimated annual interest rate as percentage (null if cannot estimate)
-
-Property data to analyze:
-${JSON.stringify(inputPropertyData, null, 2)}`;
-
-    console.log("🔍 Making Groq API call for financial data analysis...");
-
-    const response = await fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${GROQ_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
-          messages: [{ role: "user", content: prompt }],
-          max_tokens: 500,
-          temperature: 0.0,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Groq API error: ${response.status} ${response.statusText} - ${errorText}`
-      );
-    }
-
-    const result = await response.json();
-    if (!result.choices?.[0]?.message?.content) {
-      return null;
-    }
-
-    const aiResponse = result.choices[0].message.content;
-
-    // Parse the JSON response
-    let propertyData;
-    try {
-      propertyData = JSON.parse(aiResponse);
-    } catch (parseError) {
-      // Try to extract JSON from response if it's wrapped in other text
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          propertyData = JSON.parse(jsonMatch[0]);
-        } catch {
-          return null;
-        }
-      } else {
-        return null;
-      }
-    }
-
-    // Add URL to the data
-    const finalData: PropertyData = {
-      ...propertyData,
-      url,
-    };
-
-    return finalData;
-  } catch (error) {
-    return null;
-  }
-};
 
 // Handle messages from content script and popup
 chrome.runtime.onMessage.addListener(
@@ -422,23 +352,6 @@ chrome.runtime.onMessage.addListener(
           sendResponse({ propertyData });
         })
         .catch((error) => {
-          sendResponse({ error: error.message });
-        });
-
-      return true; // Keep message channel open for async response
-    }
-
-    if (message.type === "ANALYZE_HTML_CONTENT_FINANCIALS") {
-      console.log("🔍 Received ANALYZE_HTML_CONTENT_FINANCIALS message");
-      const { propertyData, url } = message.data;
-
-      analyzePropertyDataForFinancials(propertyData, url)
-        .then((financialData) => {
-          console.log("🔍 Financial analysis completed:", financialData);
-          sendResponse({ propertyData: financialData });
-        })
-        .catch((error: any) => {
-          console.log("❌ Financial analysis failed:", error);
           sendResponse({ error: error.message });
         });
 

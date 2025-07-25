@@ -6,12 +6,68 @@ import type {
 import * as XLSX from "xlsx";
 
 const STORAGE_KEY = "savedCalculations";
+const CURRENT_CALCULATION_KEY = "currentCalculation";
 
 /**
  * Generate a unique ID for calculations
  */
 const generateId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
+};
+
+/**
+ * Save current calculation state
+ */
+export const saveCurrentCalculation = async (
+  inputs: CashflowInputs,
+  results: CashflowResult | null,
+  propertyData: any
+): Promise<void> => {
+  try {
+    const currentCalculation = {
+      inputs,
+      results,
+      propertyData,
+      savedAt: Date.now(),
+    };
+
+    await chrome.storage.local.set({
+      [CURRENT_CALCULATION_KEY]: currentCalculation,
+    });
+
+    console.log("✅ Current calculation saved");
+  } catch (error) {
+    console.error("Error saving current calculation:", error);
+  }
+};
+
+/**
+ * Load current calculation state
+ */
+export const loadCurrentCalculation = async (): Promise<{
+  inputs: CashflowInputs;
+  results: CashflowResult | null;
+  propertyData: any;
+} | null> => {
+  try {
+    const result = await chrome.storage.local.get([CURRENT_CALCULATION_KEY]);
+    return result[CURRENT_CALCULATION_KEY] || null;
+  } catch (error) {
+    console.error("Error loading current calculation:", error);
+    return null;
+  }
+};
+
+/**
+ * Clear current calculation from storage
+ */
+export const clearCurrentCalculation = async (): Promise<void> => {
+  try {
+    await chrome.storage.local.remove([CURRENT_CALCULATION_KEY]);
+    console.log("✅ Current calculation cleared from storage");
+  } catch (error) {
+    console.error("Error clearing current calculation:", error);
+  }
 };
 
 /**

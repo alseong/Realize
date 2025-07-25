@@ -44,11 +44,22 @@ export const calculateCashflow = (inputs: CashflowInputs): CashflowResult => {
   // Calculate loan amount
   const loanAmount = purchasePrice - downPayment;
 
-  // Calculate monthly mortgage payment (principal + interest)
+  // Calculate CMHC premium and total mortgage amount
+  const cmhc = calculateCMHCPremium(loanAmount, purchasePrice);
+  const totalMortgageAmount = loanAmount + cmhc.premium;
+
+  // Debug logging
+  console.log(
+    `🔍 Mortgage Debug: loanAmount=${loanAmount}, cmhcPremium=${cmhc.premium}, totalMortgageAmount=${totalMortgageAmount}, interestRate=${interestRate}%, loanTerm=${loanTerm} years`
+  );
+
+  // Calculate monthly mortgage payment (principal + interest) including CMHC premium
   const monthlyMortgage =
-    loanAmount > 0
-      ? calculateMortgagePayment(loanAmount, interestRate, loanTerm)
+    totalMortgageAmount > 0
+      ? calculateMortgagePayment(totalMortgageAmount, interestRate, loanTerm)
       : 0;
+
+  console.log(`🔍 Monthly Mortgage Payment: ${monthlyMortgage}`);
 
   // Monthly Rental Income (gross rent)
   const monthlyRentalIncome = monthlyRent;
@@ -119,6 +130,10 @@ export const calculateCashflow = (inputs: CashflowInputs): CashflowResult => {
     cashOnCashReturn: Math.round(cashOnCashReturn * 100) / 100,
     capRate: Math.round(capRate * 100) / 100,
     totalCashRequired: Math.round(totalCashRequired * 100) / 100,
+    cmhcPremium: cmhc.premium,
+    cmhcRate: cmhc.rate,
+    cmhcLtv: cmhc.ltv,
+    totalMortgageAmount: Math.round(totalMortgageAmount * 100) / 100,
   };
 };
 
@@ -183,4 +198,74 @@ export const calculateDownPaymentAmount = (
   purchasePrice: number
 ): number => {
   return (purchasePrice * percentage) / 100;
+};
+
+/**
+ * Calculate CMHC premium for high-ratio mortgages (LTV > 80%)
+ *
+ * Premium Rates for Over 80% LTV:
+ * 80.01% to 85% LTV: 2.80% of total loan amount
+ * 85.01% to 90% LTV: 3.10% of total loan amount
+ * 90.01% to 95% LTV: 4.00% of total loan amount
+ * 90.01% to 95% LTV with non-traditional down payment: 4.50% of total loan amount
+ */
+export const calculateCMHCPremium = (
+  mortgageAmount: number,
+  purchasePrice: number
+): { premium: number; rate: number; ltv: number } => {
+  if (purchasePrice <= 0 || mortgageAmount <= 0) {
+    return { premium: 0, rate: 0, ltv: 0 };
+  }
+
+  const ltv = (mortgageAmount / purchasePrice) * 100;
+
+  // Debug logging
+  console.log(
+    `🔍 CMHC Debug: mortgageAmount=${mortgageAmount}, purchasePrice=${purchasePrice}, LTV=${ltv}%`
+  );
+
+  // Only apply premium if LTV > 80% (with small tolerance for floating point precision)
+  if (ltv <= 80.001) {
+    console.log(`✅ No CMHC premium - LTV ${ltv}% <= 80.001%`);
+    return { premium: 0, rate: 0, ltv };
+  }
+
+  let premiumRate = 0;
+
+  if (ltv <= 85) {
+    premiumRate = 2.8;
+  } else if (ltv <= 90) {
+    premiumRate = 3.1;
+  } else if (ltv <= 95) {
+    // Using standard rate (4.00%) - could be enhanced to detect non-traditional down payment
+    premiumRate = 4.0;
+  } else {
+    // LTV > 95% - maximum premium rate
+    premiumRate = 4.5;
+  }
+
+  const premium = mortgageAmount * (premiumRate / 100);
+
+  return {
+    premium: Math.round(premium * 100) / 100,
+    rate: premiumRate,
+    ltv: Math.round(ltv * 100) / 100,
+  };
+};
+
+/**
+ * Calculate total mortgage amount including CMHC premium
+ */
+export const calculateTotalMortgageAmount = (
+  baseMortgageAmount: number,
+  purchasePrice: number
+): { totalAmount: number; premium: number; rate: number; ltv: number } => {
+  const cmhc = calculateCMHCPremium(baseMortgageAmount, purchasePrice);
+
+  return {
+    totalAmount: baseMortgageAmount + cmhc.premium,
+    premium: cmhc.premium,
+    rate: cmhc.rate,
+    ltv: cmhc.ltv,
+  };
 };

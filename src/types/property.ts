@@ -39,6 +39,10 @@ export interface CashflowResult {
   cashOnCashReturn: number; // percentage
   capRate: number; // percentage
   totalCashRequired: number;
+  cmhcPremium?: number;
+  cmhcRate?: number;
+  cmhcLtv?: number;
+  totalMortgageAmount?: number;
 }
 
 export interface SavedCalculation {
@@ -59,7 +63,6 @@ export interface ChromeExtensionMessage {
     | "GET_PROPERTY_DATA"
     | "GET_PROPERTY_DATA_HTML"
     | "CAPTURE_SCREENSHOT"
-    | "ANALYZE_HTML_CONTENT"
-    | "ANALYZE_HTML_CONTENT_FINANCIALS";
+    | "ANALYZE_HTML_CONTENT";
   data?: any;
 }
