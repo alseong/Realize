@@ -38,31 +38,8 @@ async function analyzeHtmlContentWithGroq(
       return null;
     }
 
-    const aiResponse = result.propertyData;
-    console.log("🔍 Raw AI response:", aiResponse);
-
-    // Parse the JSON response
-    let propertyData;
-    try {
-      propertyData = JSON.parse(aiResponse);
-      console.log("🔍 Parsed AI JSON:", propertyData);
-    } catch (parseError) {
-      console.log("❌ Failed to parse AI JSON:", parseError);
-      // Try to extract JSON from response if it's wrapped in other text
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          propertyData = JSON.parse(jsonMatch[0]);
-          console.log("🔍 Parsed extracted JSON:", propertyData);
-        } catch {
-          console.log("❌ Failed to parse extracted JSON");
-          return null;
-        }
-      } else {
-        console.log("❌ No JSON found in AI response");
-        return null;
-      }
-    }
+    const propertyData = result.propertyData;
+    console.log("🔍 Raw AI response:", propertyData);
 
     // Add URL to the data
     const finalData: PropertyData = {
