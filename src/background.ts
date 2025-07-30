@@ -1,7 +1,7 @@
 import type { ChromeExtensionMessage, PropertyData } from "./types/property";
 
 // Use Vercel proxy to keep API keys secure
-const PROXY_URL = "https://realize-ten.vercel.app";
+const PROXY_URL = "https://realize.vercel.app";
 
 /**
  * Extract clean text content from HTML for AI analysis
@@ -138,134 +138,6 @@ async function analyzeHtmlContentWithGroq(
       cleanText.length > maxLength
         ? cleanText.substring(0, maxLength) + "...[truncated]"
         : cleanText;
-
-    const prompt = `Here is the provided listing details:
-${truncatedText}
-
-PROMPT:
-You are a data extraction tool. Analyze this real estate listing text content and extract ONLY the property information as JSON. Here are the fields you need to extract:
-
-- price: Main listing price as number (remove commas and currency symbols)
-- address: Full address string (look for the main property address, usually in headings, titles, or prominent text)
-- propertyType: Type like "Single Family", "Multi-Family", "Duplex", "Triplex", "Condo", "Apartment", etc.
-- bedrooms: Total bedrooms as number (add "3 + 1" = 4)
-- bathrooms: Bathrooms as number (can be decimal)
-- sqft: Square footage as number (null if not available)
-- propertyTax: Monthly property tax amount (MUST estimate if not found). If the value is greater than $1000, it is likely a yearly amount and MUST be divided by 12 to get the monthly amount
-- insurance: Monthly insurance amount (MUST estimate if not found)
-- hoaFees: Monthly HOA/condo fees (MUST estimate if not found)
-- monthlyRent: Estimated monthly rent based on property price, type, and characteristics (MUST estimate)
-- interestRate: Estimated current mortgage interest rate (MUST estimate) 
-
-CRITICAL: 
-1. Return ONLY valid JSON, no code, no explanations, no other text
-2. You MUST analyze the provided real estate data provided below
-3. Do NOT return example data - extract real data from the HTML
-4. ALWAYS try to extract actual data first - ONLY estimate if data is completely unavailable
-5. CRITICAL: You MUST estimate propertyTax, insurance, hoaFees, monthlyRent, and interestRate if not found in content - NEVER return null for these fields
-
-PRICE EXTRACTION RULES:
-- Look for the MAIN listing price, usually the largest/most prominent price on the page
-- Ignore any prices that are clearly not the main listing price 
-- Remove all commas and currency symbols, return only the number
-- If you see multiple prices, choose the one that appears to be the main listing price
-
-ADDRESS EXTRACTION RULES:
-- Page titles containing addresses
-- Headings (h1, h2, h3) with addresses
-- Text near "Address" labels
-- Prominent text that looks like a street address
-
-PROPERTY TAX EXTRACTION:
-- Look for: 'property tax', 'taxes', 'annual tax', 'tax assessment', 'tax rate', 'property taxes', 'tax'
-- Common locations: property details, cost breakdown, listing facts, property information
-- Search thoroughly in ALL text content before giving up
-- If yearly amount: divide by 12 for monthly
-- If monthly amount: use as is
-- If not found: return null
-
-INSURANCE EXTRACTION:
-- Look for: 'home insurance', 'property insurance', 'homeowners insurance', 'insurance estimate', 'insurance cost'
-- Search thoroughly in ALL text content before giving up
-- If yearly: divide by 12, if monthly: use as is
-- If not found: return null
-
-HOA/CONDO FEES EXTRACTION:
-- Look for: 'HOA', 'condo fee', 'maintenance fee', 'strata fee', 'common charges', 'monthly maintenance'
-- Search thoroughly in ALL text content before giving up
-- Usually already monthly, but verify the time period
-- If not found: return null
-
-IMPORTANT EXTRACTION RULES:
-1. Always check if amounts are 'per year', 'annually', 'yearly' - if so, divide by 12
-2. Look for '/month', 'monthly', 'per month' indicators
-3. Return actual numbers only (no currency symbols)
-4. Search thoroughly in all text content, not just obvious labels
-
-ESTIMATION RULES (MANDATORY - You MUST estimate these fields if not found in content):
-
-PROPERTY TAX ESTIMATION:
-- Calculate as: (property_price × annual_tax_rate) ÷ 12
-- Annual tax rates by property type and value:
-  - Single Family homes: 0.8-1.2% (use 1.0% as default)
-  - Condos/Apartments: 0.9-1.3% (use 1.1% as default)
-  - Townhouses: 0.8-1.1% (use 0.95% as default)
-  - Luxury properties (>$1M): 1.0-1.5% (use 1.2% as default)
-  - Lower-value properties (<$300K): 0.6-1.0% (use 0.8% as default)
-- General default: 1.0% if property type unclear
-- Example: $500,000 single family home = ($500,000 × 0.01) ÷ 12 = $417/month
-
-INSURANCE ESTIMATION:
-- Calculate as: (property_price × annual_insurance_rate) ÷ 12
-- Annual insurance rates:
-  - Properties under $400K: 0.25% of value
-  - Properties $400K-$800K: 0.30% of value
-  - Properties over $800K: 0.35% of value
-  - Add 25% for older homes (pre-1980)
-  - Add 15% for high-risk areas (coastal, wildfire zones)
-- Example: $500,000 home = ($500,000 × 0.003) ÷ 12 = $125/month
-
-HOA/CONDO FEES ESTIMATION:
-- Single Family: $0 (no HOA fees typically)
-- Townhouse: $100-300/month based on value:
-  - Under $400K: $150
-  - $400K-$700K: $200
-  - Over $700K: $250
-- Condo/Apartment: $200-600/month based on value and amenities:
-  - Under $300K: $250
-  - $300K-$500K: $350
-  - $500K-$800K: $450
-  - Over $800K: $550
-  - Add $100 for luxury buildings with extensive amenities
-
-MONTHLY RENT ESTIMATION:
-- Calculate as: property_price × monthly_rent_ratio
-- Base rent ratios by property type (conservative estimates):
-  - Single Family: 0.5% of property value
-  - Townhouse: 0.6% of property value  
-  - Condo 1-2 bed: 0.6% of property value
-  - Condo 3+ bed: 0.5% of property value
-  - Apartment: 0.7% of property value
-  - Multifamily (2-4 units): 0.8% of property value
-  - Multifamily (5+ units): 0.9% of property value
-
-QUICK ADJUSTMENTS:
-- High-demand/urban areas: -0.2%
-- Small towns/rural: +0.2%
-- New/renovated (post-2010): +0.1%
-- Older properties (pre-1980): -0.1%
-- Luxury properties (>$800K): -0.1%
-
-INTEREST RATE ESTIMATION:
-- Base rates:
-  - US: 6.5%
-  - Canada: 4.0%
-  - Figure out the country from the address or URL (.ca is canada)
-- Adjustments:
-  - Properties over $1M: add 0.25%
-  - Properties under $300K: subtract 0.25%
-
- `;
 
     const response = await fetch(
       `${PROXY_URL}/api/analyze-html`, // Use the Vercel proxy URL
