@@ -74,7 +74,7 @@ PROPERTY TAX ESTIMATION (MONTHLY):
 Calculate as: (property_price × annual_tax_rate ÷ 100) ÷ 12
 
 Annual tax rates by property type and value:
-- Single Family homes: 0.8-1.2% (use 1.0% as default)
+- Single Family homes: 0.6-1.% (use 0.8% as default)
 - Condos/Apartments: 0.9-1.3% (use 1.1% as default)  
 - Townhouses: 0.8-1.1% (use 0.95% as default)
 - Luxury properties (>$1M): 1.0-1.5% (use 1.2% as default)

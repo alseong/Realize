@@ -235,10 +235,11 @@ function App() {
       const value = parseFloat(event.target.value) || 0;
       setInputs((prev) => ({ ...prev, [field]: value }));
 
-      // If purchase price changes, update down payment percentage display
+      // If purchase price changes, always default to 20% down payment
       if (field === "purchasePrice" && value > 0) {
-        const currentPercentage = (inputs.downPayment / value) * 100;
-        setDownPaymentPercentage(Math.round(currentPercentage * 100) / 100);
+        const defaultDownPayment = (value * 20) / 100;
+        setInputs((prev) => ({ ...prev, downPayment: defaultDownPayment }));
+        setDownPaymentPercentage(20);
       }
     };
 
