@@ -133,11 +133,6 @@ async function analyzeHtmlContentWithGroq(
   try {
     // Extract clean text content
     const cleanText = extractCleanText(htmlContent, url);
-    const maxLength = 8000; // Limit text content for token efficiency
-    const truncatedText =
-      cleanText.length > maxLength
-        ? cleanText.substring(0, maxLength) + "...[truncated]"
-        : cleanText;
 
     const response = await fetch(
       `${PROXY_URL}/api/analyze-html`, // Use the Vercel proxy URL
