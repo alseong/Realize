@@ -1,7 +1,7 @@
 import type { ChromeExtensionMessage, PropertyData } from "./types/property";
 
 // Use Vercel proxy to keep API keys secure
-const PROXY_URL = "https://realize.vercel.app";
+const PROXY_URL = "https://realize-virid.vercel.app";
 
 /**
  * Analyze HTML content using Groq API!
