@@ -104,7 +104,6 @@ INTEREST RATE ESTIMATION:
   - Canada: 4.0%
 - Figure out the country from the address or URL (.ca is canada)`;
 
-    // Call Groq API through proxy
     const response = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
