@@ -1,7 +1,7 @@
 import type { ChromeExtensionMessage, PropertyData } from "./types/property";
 
-// Store API keys securely (not accessible from content scripts or popup)
-const GROQ_API_KEY = "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";
+// Use Vercel proxy to keep API keys secure
+const PROXY_URL = "https://realize-ten.vercel.app";
 
 /**
  * Extract clean text content from HTML for AI analysis
@@ -268,18 +268,16 @@ INTEREST RATE ESTIMATION:
  `;
 
     const response = await fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
+      `${PROXY_URL}/api/analyze-html`, // Use the Vercel proxy URL
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${GROQ_API_KEY}`,
+          // No Authorization header needed for Vercel proxy
         },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
-          messages: [{ role: "user", content: prompt }],
-          max_tokens: 1000,
-          temperature: 0.0,
+          htmlContent,
+          url,
         }),
       }
     );
@@ -287,16 +285,16 @@ INTEREST RATE ESTIMATION:
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(
-        `Groq API error: ${response.status} ${response.statusText} - ${errorText}`
+        `Vercel proxy error: ${response.status} ${response.statusText} - ${errorText}`
       );
     }
 
     const result = await response.json();
-    if (!result.choices?.[0]?.message?.content) {
+    if (!result.propertyData) {
       return null;
     }
 
-    const aiResponse = result.choices[0].message.content;
+    const aiResponse = result.propertyData;
     console.log("🔍 Raw AI response:", aiResponse);
 
     // Parse the JSON response
