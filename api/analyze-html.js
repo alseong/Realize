@@ -48,6 +48,7 @@ ${cleanText}
 
 You are a data extraction tool. Analyze this real estate listing and output ONLY the property information as JSON. Here are the fields you need to output:
 
+- summary: A brief explanation of how you calculated the estimations 
 - price: Main listing price as number (remove commas and currency symbols)
 - address: Full address string
 - propertyType: Type like "Single Family", "Multi-Family", "Duplex", "Triplex", "Condo", "Apartment", etc.
