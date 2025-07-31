@@ -217,7 +217,8 @@ export const calculateCMHCPremium = (
     return { premium: 0, rate: 0, ltv: 0 };
   }
 
-  const ltv = (mortgageAmount / purchasePrice) * 100;
+  // Calculate LTV and round to 2 decimal places to avoid floating point precision issues
+  const ltv = Math.round((mortgageAmount / purchasePrice) * 10000) / 100;
 
   // Debug logging
   console.log(
@@ -249,7 +250,7 @@ export const calculateCMHCPremium = (
   return {
     premium: Math.round(premium * 100) / 100,
     rate: premiumRate,
-    ltv: Math.round(ltv * 100) / 100,
+    ltv: ltv, // Already rounded to 2 decimal places above
   };
 };
 
