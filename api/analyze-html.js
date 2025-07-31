@@ -46,7 +46,7 @@ export default async function handler(req, res) {
     const prompt = `Here is the provided listing details:
 ${cleanText}
 
-You are a data extraction tool. Analyze this real estate listing text content and extract ONLY the property information as JSON. Here are the fields you need to extract:
+You are a data extraction tool. Analyze this real estate listing and output ONLY the property information as JSON. Here are the fields you need to output:
 
 - price: Main listing price as number (remove commas and currency symbols)
 - address: Full address string
@@ -54,23 +54,15 @@ You are a data extraction tool. Analyze this real estate listing text content an
 - bedrooms: Total bedrooms as number
 - bathrooms: Bathrooms as number (can be decimal)
 - sqft: Square footage as number (null if not available)
-- propertyTax: MONTHLY property tax amount (MUST estimate if not found)
-- insurance: MONTHLY insurance amount (MUST estimate if not found)
-- hoaFees: MONTHLY HOA/condo fees (MUST estimate if not found)
-- monthlyRent: Estimated monthly rent based on property price, type, and characteristics (MUST estimate)
-- interestRate: Estimated current mortgage interest rate (MUST estimate)
+- propertyTax: MONTHLY property tax amount (MUST estimate if not found in the listing details using rules below)
+- insurance: MONTHLY insurance amount (MUST estimate if not found in the listing details using rules below)
+- hoaFees: MONTHLY HOA/condo fees (MUST estimate if not found in the listing details using rules below)
+- monthlyRent: Estimated monthly rent based on property price, type, and characteristics (MUST estimate using rules below)
+- interestRate: Estimated current mortgage interest rate (MUST estimate using rules below)
 
-CRITICAL RULES:
-1. Return ONLY valid JSON, no code, no explanations, no other text
-2. You MUST analyze the provided real estate data
-3. Do NOT return example data - extract real data from the HTML
-4. ALWAYS try to extract actual data first - ONLY estimate if data is completely unavailable
-5. CRITICAL: You MUST estimate propertyTax, insurance, hoaFees, monthlyRent, and interestRate if not found in content - NEVER return null for these fields
-6. CRITICAL: ALL amounts (propertyTax, insurance, hoaFees) must be MONTHLY amounts. If you extract yearly amounts, convert them to monthly by dividing by 12
+ESTIMATION RULES:
 
-MANDATORY ESTIMATION FORMULAS:
-
-PROPERTY TAX ESTIMATION (MONTHLY):
+propertyTax:
 Calculate as: (property_price × annual_tax_rate ÷ 100) ÷ 12
 
 Annual tax rates by property type and value:
@@ -81,9 +73,7 @@ Annual tax rates by property type and value:
 - Lower-value properties (<$300K): 0.6-1.0% (use 0.8% as default)
 - General default: 1.0% if property type unclear
 
-EXAMPLE: $500,000 property × 1.0% ÷ 12 = $416.67/month
-
-INSURANCE ESTIMATION (MONTHLY):
+insurance:
 Calculate as: (property_price × annual_insurance_rate ÷ 100) ÷ 12
 
 Annual insurance rates:
@@ -91,9 +81,7 @@ Annual insurance rates:
 - Properties $400K-$800K: 0.30% of value
 - Properties over $800K: 0.35% of value
 
-EXAMPLE: $500,000 property × 0.30% ÷ 12 = $125/month
-
-HOA/CONDO FEES ESTIMATION (MONTHLY):
+hoaFees:
 - Single Family: $0 (no HOA fees typically)
 - Townhouse: $100-300/month based on value:
  - Under $400K: $100/month
@@ -101,22 +89,37 @@ HOA/CONDO FEES ESTIMATION (MONTHLY):
  - Over $800K: $300/month
 - Condo/Apartment: $200-600/month based on value:
  - Under $400K: $200/month
- - $400K-$800K: $350/month
- - Over $800K: $500/month
+ - $400K-700K: $350/month
+ - Over $700K: $500/month
 
-MONTHLY RENT ESTIMATION:
+monthlyRent:
 Calculate as: property_price × monthly_rent_ratio ÷ 100
 
-Base rent ratios by property type:
-- Single Family: 0.5% of property value
-- Townhouse: 0.6% of property value  
-- Condo 1-2 bed: 0.6% of property value
-- Condo 3+ bed: 0.5% of property value
-- Apartment: 0.7% of property value
+For the monthly_rent_ratio, determine if the address is in a high-cost, medium-cost, or lower-cost market.
 
-EXAMPLE: $500,000 condo × 0.6% = $3,000/month
+HIGH-COST MARKETS:
+- Single Family: 0.4% of property value
+- Townhouse: 0.5% of property value  
+- Condo 1-2 bed: 0.5% of property value
+- Condo 3+ bed: 0.4% of property value
+- Apartment: 0.6% of property value
 
-INTEREST RATE ESTIMATION:
+MEDIUM-COST MARKETS:
+- Single Family: 0.7% of property value
+- Townhouse: 0.8% of property value  
+- Condo 1-2 bed: 0.8% of property value
+- Condo 3+ bed: 0.7% of property value
+- Apartment: 0.9% of property value
+
+LOWER-COST MARKETS:
+- Single Family: 1.0% of property value
+- Townhouse: 1.1% of property value  
+- Condo 1-2 bed: 1.1% of property value
+- Condo 3+ bed: 1.0% of property value
+- Apartment: 1.2% of property value
+
+
+interestRate:
 - US properties: 6.5%
 - Canadian properties: 4.0%
 - Determine country from address or URL (.ca = Canada)`;
