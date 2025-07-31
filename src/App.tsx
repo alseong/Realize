@@ -120,19 +120,6 @@ function App() {
 
         const currentUrl = tabs[0].url;
 
-        // Check if we have cached data for this URL
-        const cachedData = await chrome.storage.local.get([
-          "currentPropertyData",
-          "lastUpdated",
-          "cachedUrl",
-          "extractionMethod",
-        ]);
-
-        const hasCachedData =
-          cachedData.currentPropertyData &&
-          cachedData.cachedUrl === currentUrl &&
-          cachedData.lastUpdated;
-
         // Try to load current calculation first
         const currentCalculation = await loadCurrentCalculation();
 
@@ -141,8 +128,6 @@ function App() {
           "- Current calculation:",
           currentCalculation ? "found" : "not found"
         );
-        console.log("- Has cached data:", hasCachedData);
-        console.log("- Cached URL:", cachedData.cachedUrl);
         console.log("- Current URL:", currentUrl);
 
         if (currentCalculation) {
@@ -159,43 +144,6 @@ function App() {
               100;
             setDownPaymentPercentage(Math.round(percentage * 100) / 100);
           }
-
-          setError("");
-          setLoading(false);
-        } else if (hasCachedData) {
-          console.log("✅ Using cached data for current page");
-          setPropertyData(cachedData.currentPropertyData);
-
-          // Restore form inputs from cache
-          const newPrice = cachedData.currentPropertyData.price || 0;
-          setInputs((prev) => {
-            const newInputs = {
-              ...prev,
-              purchasePrice: newPrice,
-              propertyTaxes: cachedData.currentPropertyData.propertyTax || 0,
-              insurance: cachedData.currentPropertyData.insurance || 0,
-              hoaFees: cachedData.currentPropertyData.hoaFees || 0,
-              monthlyRent: cachedData.currentPropertyData.monthlyRent || 0,
-              interestRate: cachedData.currentPropertyData.interestRate || 6.5,
-            };
-
-            // Update down payment percentage
-            if (newPrice > 0) {
-              if (newInputs.downPayment > 0) {
-                const currentPercentage =
-                  (newInputs.downPayment / newPrice) * 100;
-                setDownPaymentPercentage(
-                  Math.round(currentPercentage * 100) / 100
-                );
-              } else {
-                const defaultDownPayment = (newPrice * 20) / 100;
-                newInputs.downPayment = defaultDownPayment;
-                setDownPaymentPercentage(20);
-              }
-            }
-
-            return newInputs;
-          });
 
           setError("");
           setLoading(false);
