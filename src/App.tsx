@@ -689,6 +689,30 @@ function App() {
             <Villa sx={{ color: "#F59E0B", fontSize: 24 }} />
             <Box sx={{ flexGrow: 1 }} />
             <Button
+              onClick={() => {
+                window.open("https://forms.gle/EdzjCXBY5KK9DzyK7", "_blank");
+              }}
+              sx={{
+                color: "#FFFFFF",
+                fontSize: "14px",
+                fontWeight: 400,
+                mr: 1,
+                textTransform: "none",
+                minWidth: "auto",
+                padding: "6px 8px",
+                border: "none",
+                "&:hover": {
+                  backgroundColor: "transparent",
+                  border: "none",
+                },
+                "&:focus": {
+                  outline: "none",
+                },
+              }}
+            >
+              Feedback
+            </Button>
+            <Button
               onClick={async () => {
                 setPropertyData(null);
                 setResult(null);
