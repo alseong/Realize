@@ -191,6 +191,44 @@ function App() {
       }
     };
 
+  // Auto-calculate only mortgage payment for real-time updates
+  useEffect(() => {
+    if (inputs.purchasePrice > 0 && inputs.downPayment > 0 && result) {
+      try {
+        // Only update the mortgage-related calculations in real-time
+        const loanAmount = inputs.purchasePrice - inputs.downPayment;
+        const cmhc = calculateCMHCPremium(loanAmount, inputs.purchasePrice);
+        const totalMortgageAmount = loanAmount + cmhc.premium;
+        const monthlyMortgage = calculateMortgagePayment(
+          totalMortgageAmount,
+          inputs.interestRate,
+          inputs.loanTerm
+        );
+
+        // Update only the mortgage-related fields in the existing result
+        setResult((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            monthlyMortgage: Math.round(monthlyMortgage * 100) / 100,
+            cmhcPremium: cmhc.premium,
+            cmhcRate: cmhc.rate,
+            cmhcLtv: cmhc.ltv,
+            totalMortgageAmount: Math.round(totalMortgageAmount * 100) / 100,
+          };
+        });
+        console.log("🔄 Auto-updated mortgage payment from input change");
+      } catch (err) {
+        console.error("Auto-mortgage calculation error:", err);
+      }
+    }
+  }, [
+    inputs.purchasePrice,
+    inputs.downPayment,
+    inputs.interestRate,
+    inputs.loanTerm,
+  ]);
+
   const handleDownPaymentDollarChange = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -896,14 +934,15 @@ function App() {
                 }}
               >
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  ⚠️ Minimum Down Payment: {formatCurrency(minimumDownPayment)}(
+                  Minimum Down Payment Required:{" "}
+                  {formatCurrency(minimumDownPayment)} (
                   {minimumDownPaymentPercentage.toFixed(1)}%)
                   <Box
                     component="span"
                     sx={{ color: "#F59E0B", fontWeight: 600 }}
                   >
                     {" "}
-                    • Below minimum required
+                    • Current down payment is below CMHC minimum requirements
                   </Box>
                 </Typography>
               </Alert>
@@ -1252,16 +1291,18 @@ function App() {
                       {formatCurrency(result.monthlyMortgage)}
                     </Typography>
                   </Box>
-                  {result.cmhcPremium && result.cmhcPremium > 0 && (
-                    <Box>
-                      <Typography variant="body2" color="warning.main">
-                        - CMHC Premium ({result.cmhcRate}% rate):
-                      </Typography>
-                      <Typography variant="body2" color="warning.main">
-                        {formatCurrency(result.cmhcPremium)} (added to mortgage)
-                      </Typography>
-                    </Box>
-                  )}
+                  {(result.cmhcPremium || 0) > 0 &&
+                    (result.cmhcRate || 0) > 0 && (
+                      <Box>
+                        <Typography variant="body2" color="warning.main">
+                          - CMHC Premium ({result.cmhcRate}% rate):
+                        </Typography>
+                        <Typography variant="body2" color="warning.main">
+                          {formatCurrency(result.cmhcPremium || 0)} (added to
+                          mortgage)
+                        </Typography>
+                      </Box>
+                    )}
                   <Divider />
                   <Box>
                     <Typography variant="body2" fontWeight="bold">
