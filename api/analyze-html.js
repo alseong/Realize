@@ -99,25 +99,33 @@ For the monthly_rent_ratio, determine if the address is in a high-cost, medium-c
 
 HIGH-COST MARKETS:
 - Single Family: 0.4% of property value
+- Multi-Family (4+ units): 0.6% of property value
 - Townhouse: 0.5% of property value  
 - Condo 1-2 bed: 0.5% of property value
 - Condo 3+ bed: 0.4% of property value
 - Apartment: 0.6% of property value
+- Duplex: 0.5% of property value
+- Triplex: 0.6% of property value
 
 MEDIUM-COST MARKETS:
 - Single Family: 0.7% of property value
+- Multi-Family (4+ units): 0.9% of property value
 - Townhouse: 0.8% of property value  
 - Condo 1-2 bed: 0.8% of property value
 - Condo 3+ bed: 0.7% of property value
 - Apartment: 0.9% of property value
+- Duplex: 0.8% of property value
+- Triplex: 0.9% of property value
 
 LOWER-COST MARKETS:
 - Single Family: 1.0% of property value
+- Multi-Family (4+ units): 1.3% of property value
 - Townhouse: 1.1% of property value  
 - Condo 1-2 bed: 1.1% of property value
 - Condo 3+ bed: 1.0% of property value
 - Apartment: 1.2% of property value
-
+- Duplex: 1.1% of property value
+- Triplex: 1.3% of property value
 
 interestRate:
 - US properties: 6.5%
