@@ -690,12 +690,12 @@ function App() {
             <Box sx={{ flexGrow: 1 }} />
             <Button
               onClick={() => {
-                window.open("https://forms.gle/EdzjCXBY5KK9DzyK7", "_blank");
+                window.open("https://buymeacoffee.com/minjun", "_blank");
               }}
               sx={{
-                color: "#FFFFFF",
+                color: "#FF813F",
                 fontSize: "14px",
-                fontWeight: 400,
+                fontWeight: 500,
                 mr: 1,
                 textTransform: "none",
                 minWidth: "auto",
@@ -710,7 +710,7 @@ function App() {
                 },
               }}
             >
-              Feedback
+              ☕ Support
             </Button>
             <Button
               onClick={async () => {
