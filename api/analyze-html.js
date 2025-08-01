@@ -43,12 +43,13 @@ export default async function handler(req, res) {
 
     console.log("🔍 Clean text:", cleanText);
 
-    const prompt = `Here is the provided listing details:
+    const prompt = `CRITICAL: You must respond with ONLY a valid JSON object. No other text, explanations, or formatting.
+
+Here is the real estate listing to analyze:
 ${cleanText}
 
-You are a data extraction tool. Analyze this real estate listing and output ONLY the property information as JSON. Here are the fields you need to output:
+Extract the property information and return ONLY a JSON object with these exact fields:
 
-- summary: A brief explanation of how you calculated the estimations 
 - price: Main listing price as number (remove commas and currency symbols)
 - address: Full address string
 - propertyType: Type like "Single Family", "Multi-Family", "Duplex", "Triplex", "Condo", "Apartment", etc.
@@ -131,7 +132,9 @@ LOWER-COST MARKETS:
 interestRate:
 - US properties: 6.5%
 - Canadian properties: 4.0%
-- Determine country from address or URL (.ca = Canada)`;
+- Determine country from address or URL (.ca = Canada)
+
+CRITICAL REMINDER: Return ONLY the JSON object. No explanations, no code blocks, no additional text. Just the raw JSON starting with { and ending with }.`;
 
     const response = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
@@ -164,21 +167,33 @@ interestRate:
       throw new Error("No response from Groq API");
     }
 
+    // Log the AI response for debugging
+    console.log("🔍 Raw AI Response:", aiResponse);
+
     // Parse the JSON response
     let propertyData;
     try {
       propertyData = JSON.parse(aiResponse);
     } catch (parseError) {
+      console.log("⚠️ Initial JSON parse failed:", parseError.message);
+
       // Try to extract JSON from response if it's wrapped in other text
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
+        console.log("🔍 Extracted JSON:", jsonMatch[0]);
         try {
           propertyData = JSON.parse(jsonMatch[0]);
-        } catch {
-          throw new Error("Failed to parse AI response");
+        } catch (secondParseError) {
+          console.log("❌ Second JSON parse failed:", secondParseError.message);
+          throw new Error(
+            `Failed to parse AI response. Raw response: ${aiResponse}`
+          );
         }
       } else {
-        throw new Error("No valid JSON found in AI response");
+        console.log("❌ No JSON found in response:", aiResponse);
+        throw new Error(
+          `No valid JSON found in AI response. Raw response: ${aiResponse}`
+        );
       }
     }
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Realize: Analyze real estate with 0 friction",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "description": "Analyze real estate listings with AI-powered financial calculations",
   "permissions": ["activeTab", "storage", "tabs", "scripting"],
   "host_permissions": ["<all_urls>"],

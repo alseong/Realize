@@ -41,17 +41,9 @@ async function analyzeHtmlContentWithGroq(
     const propertyData = result.propertyData;
     console.log("🔍 Raw AI response:", propertyData);
 
-    // Log the summary if it exists
-    if (propertyData.summary) {
-      console.log("📊 AI Estimation Summary:", propertyData.summary);
-    }
-
-    // Remove summary from property data since it's not needed for calculations
-    const { summary, ...propertyDataWithoutSummary } = propertyData;
-
     // Add URL to the data
     const finalData: PropertyData = {
-      ...propertyDataWithoutSummary,
+      ...propertyData,
       url,
     };
 
