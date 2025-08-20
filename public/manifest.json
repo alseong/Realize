@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Realize: Analyze real estate with 0 friction",
+  "name": "Real Estate Investment Calculator",
   "version": "4.0.3",
   "description": "Analyze real estate listings with AI-powered financial calculations",
   "permissions": ["activeTab", "storage", "tabs", "scripting"],
@@ -19,7 +19,7 @@
   ],
   "action": {
     "default_popup": "index.html",
-    "default_title": "Realize: Analyze real estate with 0 friction",
+    "default_title": "Real Estate Investment Calculator",
     "default_icon": {
       "16": "icon16.png",
       "48": "icon48.png",
