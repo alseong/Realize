@@ -423,20 +423,11 @@ function App() {
                 interestRate: response.data.interestRate || 6.5, // Default to 6.5% if not provided
               };
 
-              // Update down payment percentage based on current dollar amount and new price
+              // Always set down payment to exactly 20% when auto-fill is used
               if (newPrice > 0) {
-                if (newInputs.downPayment > 0) {
-                  const currentPercentage =
-                    (newInputs.downPayment / newPrice) * 100;
-                  setDownPaymentPercentage(
-                    Math.round(currentPercentage * 100) / 100
-                  );
-                } else {
-                  // If down payment is 0, set it to 20% of the new price
-                  const defaultDownPayment = (newPrice * 20) / 100;
-                  newInputs.downPayment = defaultDownPayment;
-                  setDownPaymentPercentage(20);
-                }
+                const defaultDownPayment = (newPrice * 20) / 100;
+                newInputs.downPayment = defaultDownPayment;
+                setDownPaymentPercentage(20);
               }
 
               return newInputs;
@@ -455,11 +446,8 @@ function App() {
             // Auto-calculate cashflow after AI extraction
             setTimeout(() => {
               try {
-                // Calculate down payment based on percentage if not set
-                const downPaymentAmount =
-                  inputs.downPayment > 0
-                    ? inputs.downPayment
-                    : newPrice * (downPaymentPercentage / 100);
+                // Use exactly 20% down payment after auto-fill
+                const downPaymentAmount = newPrice * 0.2;
 
                 const calculationResult = calculateCashflow({
                   ...inputs,

@@ -65,11 +65,12 @@ CRITICAL:
 3. Do NOT return example data - extract real data from the HTML
 4. ALWAYS try to extract actual data first - ONLY estimate if data is completely unavailable
 5. CRITICAL: You MUST estimate propertyTax, insurance, hoaFees, monthlyRent, and interestRate if not found in content - NEVER return null for these fields
+6. IMPORTANT: All numeric fields MUST contain CALCULATED VALUES only - NO mathematical expressions, formulas, or calculations in the JSON
 
 ESTIMATION RULES (MANDATORY - You MUST estimate these fields if not found in content):
 
 PROPERTY TAX ESTIMATION:
-- Calculate as: (property_price × annual_tax_rate) ÷ 12
+- Calculate as: (property_price × annual_tax_rate) ÷ 12 and return the FINAL NUMBER
 - Annual tax rates by property type and value:
   - Single Family homes: 0.8-1.2% (use 1.0% as default)
   - Condos/Apartments: 0.9-1.3% (use 1.1% as default)
@@ -79,7 +80,7 @@ PROPERTY TAX ESTIMATION:
 - General default: 1.0% if property type unclear
 
 INSURANCE ESTIMATION:
-- Calculate as: (property_price × annual_insurance_rate) ÷ 12
+- Calculate as: (property_price × annual_insurance_rate) ÷ 12 and return the FINAL NUMBER
 - Annual insurance rates:
   - Properties under $400K: 0.25% of value
   - Properties $400K-$800K: 0.30% of value
@@ -91,7 +92,7 @@ HOA/CONDO FEES ESTIMATION:
 - Condo/Apartment: $200-600/month based on value and amenities
 
 MONTHLY RENT ESTIMATION:
-- Calculate as: property_price × monthly_rent_ratio
+- Calculate as: property_price × monthly_rent_ratio and return the FINAL NUMBER
 - Base rent ratios by property type (conservative estimates):
   - Single Family: 0.5% of property value
   - Townhouse: 0.6% of property value  

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Realize: Analyze real estate with 0 friction",
-  "version": "4.0.2",
+  "version": "4.0.3",
   "description": "Analyze real estate listings with AI-powered financial calculations",
   "permissions": ["activeTab", "storage", "tabs", "scripting"],
   "host_permissions": ["<all_urls>"],
@@ -34,5 +34,8 @@
       "resources": ["assets/*"],
       "matches": ["*://*.realtor.ca/*", "https://www.realtor.ca/*"]
     }
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
 }
