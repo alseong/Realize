@@ -158,7 +158,7 @@ FINAL REMINDER: Your JSON response must have ALL numeric fields as calculated fi
         try {
           propertyData = JSON.parse(jsonMatch[0]);
         } catch {
-          throw new Error("Failed to parse AI response");
+          throw new Error("Failed to parse AI response!");
         }
       } else {
         throw new Error("No valid JSON found in AI response");
