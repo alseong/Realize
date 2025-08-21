@@ -3,8 +3,8 @@
   "name": "Real Estate Investment Calculator",
   "version": "4.0.3",
   "description": "Analyze real estate listings with AI-powered financial calculations",
-  "permissions": ["activeTab", "storage", "tabs", "scripting"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": ["activeTab", "storage", "tabs", "scripting", "identity"],
+  "host_permissions": ["<all_urls>", "https://*.supabase.co/*"],
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",

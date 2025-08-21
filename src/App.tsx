@@ -37,6 +37,9 @@ import {
   AutoAwesome,
 } from "@mui/icons-material";
 import { theme } from "./theme";
+import { useAuth } from "./hooks/useAuth";
+import { AuthPage } from "./components/AuthPage";
+import { UserProfile } from "./components/UserProfile";
 
 import type {
   PropertyData,
@@ -67,6 +70,9 @@ import {
 } from "./utils/storage";
 
 function App() {
+  const { user, loading: authLoading } = useAuth();
+
+  console.log("🔍 App render - user:", !!user, "authLoading:", authLoading);
   const [propertyData, setPropertyData] = useState<PropertyData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [calculating, setCalculating] = useState<boolean>(false);
@@ -652,6 +658,34 @@ function App() {
     );
   }
 
+  // Show auth loading spinner
+  if (authLoading) {
+    return (
+      <ThemeProvider theme={theme}>
+        <Box
+          sx={{
+            width: 400,
+            height: 600,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <CircularProgress />
+        </Box>
+      </ThemeProvider>
+    );
+  }
+
+  // Show auth page if not authenticated
+  if (!user) {
+    return (
+      <ThemeProvider theme={theme}>
+        <AuthPage />
+      </ThemeProvider>
+    );
+  }
+
   return (
     <ThemeProvider theme={theme}>
       <Box
@@ -676,6 +710,7 @@ function App() {
           <Toolbar sx={{ minHeight: 48, px: 2 }}>
             <Villa sx={{ color: "#F59E0B", fontSize: 24 }} />
             <Box sx={{ flexGrow: 1 }} />
+            <UserProfile />
             <Button
               onClick={() => {
                 window.open(

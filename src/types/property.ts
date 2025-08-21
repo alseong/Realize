@@ -63,6 +63,12 @@ export interface ChromeExtensionMessage {
     | "GET_PROPERTY_DATA"
     | "GET_PROPERTY_DATA_HTML"
     | "CAPTURE_SCREENSHOT"
-    | "ANALYZE_HTML_CONTENT";
+    | "ANALYZE_HTML_CONTENT"
+    | "INITIATE_GOOGLE_AUTH"
+    | "GET_SESSION"
+    | "SIGN_OUT"
+    | "AUTH_SUCCESS"
+    | "AUTH_ERROR";
   data?: any;
+  error?: string;
 }
