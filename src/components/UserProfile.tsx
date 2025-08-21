@@ -1,14 +1,32 @@
-import React from "react";
-import { Box, Avatar, Typography, IconButton, Tooltip } from "@mui/material";
+import React, { useState } from "react";
+import {
+  Avatar,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  ButtonBase,
+} from "@mui/material";
 import { Logout as LogoutIcon } from "@mui/icons-material";
 import { useAuth } from "../hooks/useAuth";
 
 export const UserProfile: React.FC = () => {
   const { user, signOut } = useAuth();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+
+  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
 
   const handleSignOut = async () => {
     try {
       await signOut();
+      handleClose();
     } catch (error) {
       console.error("Sign out failed:", error);
     }
@@ -17,56 +35,58 @@ export const UserProfile: React.FC = () => {
   if (!user) return null;
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 1,
-        px: 2,
-        py: 1,
-        backgroundColor: "rgba(255, 255, 255, 0.1)",
-        borderRadius: 1,
-      }}
-    >
-      <Avatar
-        src={user.user_metadata?.avatar_url}
-        alt={user.user_metadata?.full_name || user.email}
-        sx={{ width: 32, height: 32 }}
+    <>
+      <ButtonBase
+        onClick={handleClick}
+        sx={{
+          borderRadius: "50%",
+          "&:hover": {
+            transform: "scale(1.05)",
+            transition: "transform 0.2s ease-in-out",
+          },
+        }}
       >
-        {(user.user_metadata?.full_name || user.email || "")
-          .charAt(0)
-          .toUpperCase()}
-      </Avatar>
-
-      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-        <Typography
-          variant="body2"
+        <Avatar
+          src={user.user_metadata?.avatar_url}
+          alt={user.user_metadata?.full_name || user.email}
           sx={{
-            color: "white",
-            fontWeight: 500,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {user.user_metadata?.full_name || user.email}
-        </Typography>
-      </Box>
-
-      <Tooltip title="Sign out">
-        <IconButton
-          size="small"
-          onClick={handleSignOut}
-          sx={{
-            color: "white",
+            width: 36,
+            height: 36,
+            border: "2px solid rgba(255, 255, 255, 0.2)",
             "&:hover": {
-              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              border: "2px solid rgba(255, 255, 255, 0.4)",
             },
           }}
         >
-          <LogoutIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
-    </Box>
+          {(user.user_metadata?.full_name || user.email || "")
+            .charAt(0)
+            .toUpperCase()}
+        </Avatar>
+      </ButtonBase>
+
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "right",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+        sx={{
+          mt: 1,
+        }}
+      >
+        <MenuItem onClick={handleSignOut}>
+          <ListItemIcon>
+            <LogoutIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Sign out</ListItemText>
+        </MenuItem>
+      </Menu>
+    </>
   );
 };

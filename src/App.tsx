@@ -25,7 +25,6 @@ import {
   Toolbar,
 } from "@mui/material";
 import {
-  Villa,
   AttachMoneyOutlined,
   TrendingUpOutlined,
   SaveOutlined,
@@ -708,36 +707,7 @@ function App() {
           }}
         >
           <Toolbar sx={{ minHeight: 48, px: 2 }}>
-            <Villa sx={{ color: "#F59E0B", fontSize: 24 }} />
             <Box sx={{ flexGrow: 1 }} />
-            <UserProfile />
-            <Button
-              onClick={() => {
-                window.open(
-                  "https://docs.google.com/forms/d/e/1FAIpQLSfa8WQMJT2Kyj1nGe63wkVx0QBv5BCPtKA0cPls8yBdI75U9w/viewform?usp=header",
-                  "_blank"
-                );
-              }}
-              sx={{
-                color: "#FF813F",
-                fontSize: "14px",
-                fontWeight: 500,
-                mr: 1,
-                textTransform: "none",
-                minWidth: "auto",
-                padding: "6px 8px",
-                border: "none",
-                "&:hover": {
-                  backgroundColor: "transparent",
-                  border: "none",
-                },
-                "&:focus": {
-                  outline: "none",
-                },
-              }}
-            >
-              Feedback
-            </Button>
             <Button
               onClick={async () => {
                 setPropertyData(null);
@@ -795,11 +765,12 @@ function App() {
             <Tooltip title="View saved calculations">
               <IconButton
                 onClick={() => setShowSavedList(true)}
-                sx={{ color: "#FFFFFF" }}
+                sx={{ color: "#FFFFFF", mr: 1 }}
               >
                 <FolderOpenOutlined />
               </IconButton>
             </Tooltip>
+            <UserProfile />
           </Toolbar>
         </AppBar>
 
@@ -862,12 +833,7 @@ function App() {
           {/* Property Information */}
           {propertyData && (
             <Box sx={{ mb: 3 }}>
-              <Typography
-                variant="subtitle2"
-                gutterBottom
-                sx={{ display: "flex", alignItems: "center", mb: 2 }}
-              >
-                <Villa sx={{ mr: 1, fontSize: 18, color: "secondary.main" }} />
+              <Typography variant="subtitle2" gutterBottom sx={{ mb: 2 }}>
                 Property Details
               </Typography>
               <Card
