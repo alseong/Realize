@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Button, Typography, Stack } from "@mui/material";
+import { VillaRounded } from "@mui/icons-material";
 import { useAuth } from "../hooks/useAuth";
 
 export const AuthPage: React.FC = () => {
@@ -16,42 +17,59 @@ export const AuthPage: React.FC = () => {
   return (
     <Box
       sx={{
-        width: "100vw",
-        height: "100vh",
+        width: "400px",
+        height: "600px",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: "white",
-        p: 3,
+        overflow: "hidden", // Prevent scrollbars
       }}
     >
       <Stack
-        spacing={4}
+        spacing={5}
         alignItems="center"
-        sx={{ textAlign: "center", maxWidth: 320 }}
+        sx={{
+          textAlign: "center",
+          width: "100%",
+          px: 3,
+        }}
       >
+        {/* Villa Icon - Clean and Modern */}
+        <VillaRounded
+          sx={{
+            fontSize: "80px",
+            color: "#374151",
+            display: "block",
+            margin: "0 auto",
+          }}
+        />
+
+        {/* Brand Name and Tagline */}
         <Box sx={{ textAlign: "center" }}>
           <Typography
-            variant="h4"
+            variant="h1"
             component="h1"
-            gutterBottom
             sx={{
-              fontWeight: 700,
+              fontWeight: 300,
+              fontSize: "2.5rem",
               color: "#1F2937",
-              mb: 1,
+              mb: 1.5,
+              letterSpacing: "-0.02em",
             }}
           >
-            Welcome to Real Estate Calculator
+            Realize
           </Typography>
           <Typography
             variant="body1"
             sx={{
               color: "#6B7280",
               fontSize: "1rem",
-              lineHeight: 1.6,
+              fontWeight: 400,
+              lineHeight: 1.5,
             }}
           >
-            Sign in to analyze properties and calculate investment returns
+            Analyze properties and calculate returns
           </Typography>
         </Box>
 
@@ -59,12 +77,11 @@ export const AuthPage: React.FC = () => {
           variant="contained"
           size="large"
           startIcon={
-            <Box
-              component="svg"
-              width="18"
-              height="18"
+            <svg
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
-              sx={{ mr: 0.5 }}
+              style={{ marginRight: "8px" }}
             >
               <path
                 fill="#4285F4"
@@ -82,7 +99,7 @@ export const AuthPage: React.FC = () => {
                 fill="#EA4335"
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
-            </Box>
+            </svg>
           }
           onClick={handleGoogleSignIn}
           disabled={loading}
@@ -90,10 +107,15 @@ export const AuthPage: React.FC = () => {
             backgroundColor: "white",
             color: "#3c4043",
             border: "1px solid #dadce0",
-            borderRadius: "24px",
+            borderRadius: "8px",
             boxShadow:
               "0 1px 2px 0 rgba(60,64,67,.30), 0 1px 3px 1px rgba(60,64,67,.15)",
-            minWidth: "200px",
+            minWidth: "280px",
+            py: 2,
+            px: 3,
+            fontSize: "1rem",
+            fontWeight: 500,
+            textTransform: "none",
             "&:hover": {
               backgroundColor: "#f8f9fa",
               boxShadow:
