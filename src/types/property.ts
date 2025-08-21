@@ -68,7 +68,9 @@ export interface ChromeExtensionMessage {
     | "GET_SESSION"
     | "SIGN_OUT"
     | "AUTH_SUCCESS"
-    | "AUTH_ERROR";
+    | "AUTH_ERROR"
+    | "TEST_CONNECTION"
+    | "CONTENT_SCRIPT_LOADED";
   data?: any;
   error?: string;
 }

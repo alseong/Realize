@@ -70,8 +70,6 @@ import {
 
 function App() {
   const { user, loading: authLoading } = useAuth();
-
-  console.log("🔍 App render - user:", !!user, "authLoading:", authLoading);
   const [propertyData, setPropertyData] = useState<PropertyData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [calculating, setCalculating] = useState<boolean>(false);
@@ -377,10 +375,12 @@ function App() {
         setExtracting(false);
       }, 10000); // 10 second timeout
 
+      console.log("📤 Sending message to content script...");
       chrome.tabs.sendMessage(
         tab.id!,
         { type: "GET_PROPERTY_DATA" },
         (response: any) => {
+          console.log("📥 Received response from content script:", response);
           clearTimeout(messageTimeout); // Clear timeout if we get a response
 
           if (chrome.runtime.lastError) {

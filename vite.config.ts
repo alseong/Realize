@@ -18,5 +18,7 @@ export default defineConfig({
         assetFileNames: "assets/[name].[ext]",
       },
     },
+    target: "es2020",
+    minify: false, // Disable minification for debugging
   },
 });

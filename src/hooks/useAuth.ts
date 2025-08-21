@@ -106,20 +106,23 @@ export const useAuth = () => {
       // Check if state has actually changed
       const stateChanged =
         !!authState.user !== !!newState.user ||
-        authState.loading !== newState.loading;
+        authState.loading !== newState.loading ||
+        authState.session?.access_token !== newState.session?.access_token;
 
-      if (result.session) {
-        console.log("✅ Found stored session, user is logged in");
+      // Only update state if something actually changed
+      if (stateChanged) {
+        if (result.session) {
+          console.log(
+            "✅ Auth state changed: Found stored session, user is logged in"
+          );
+        } else {
+          console.log(
+            "✅ Auth state changed: No stored session found, user needs to sign in"
+          );
+        }
         updateAuthState(newState);
       } else {
-        console.log("❌ No stored session found, user needs to sign in");
-        updateAuthState(newState);
-      }
-
-      // If we've reached a stable state (signed in or signed out),
-      // we can reduce polling frequency
-      if (!newState.loading && !stateChanged) {
-        console.log("🎯 Auth state is stable, polling can be reduced");
+        console.log("🔄 Auth state unchanged, skipping update");
       }
     } catch (error) {
       console.error("Error checking auth state:", error);
@@ -266,17 +269,9 @@ export const useAuth = () => {
     }
   };
 
-  const returnValue = {
+  return {
     ...authState,
     signInWithGoogle,
     signOut,
   };
-
-  console.log("🔍 useAuth returning:", {
-    user: !!returnValue.user,
-    loading: returnValue.loading,
-    hasSession: !!returnValue.session,
-  });
-
-  return returnValue;
 };

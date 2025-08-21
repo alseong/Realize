@@ -69,6 +69,10 @@ async function analyzeHtmlContentWithGroq(
   url: string
 ): Promise<PropertyData | null> {
   try {
+    console.log("🌐 Background: Making API request to Vercel proxy...");
+    console.log("🌐 Background: Proxy URL:", `${PROXY_URL}/api/analyze-html`);
+    console.log("🌐 Background: HTML content length:", htmlContent.length);
+
     const response = await fetch(
       `${PROXY_URL}/api/analyze-html`, // Use the Vercel proxy URL
       {
@@ -84,15 +88,25 @@ async function analyzeHtmlContentWithGroq(
       }
     );
 
+    console.log(
+      "🌐 Background: API response status:",
+      response.status,
+      response.statusText
+    );
+
     if (!response.ok) {
       const errorText = await response.text();
+      console.error("❌ Background: API error response:", errorText);
       throw new Error(
         `Vercel proxy error: ${response.status} ${response.statusText} - ${errorText}`
       );
     }
 
     const result = await response.json();
+    console.log("🌐 Background: API response result:", result);
+
     if (!result.propertyData) {
+      console.warn("⚠️ Background: No property data in API response");
       return null;
     }
 
@@ -109,6 +123,10 @@ async function analyzeHtmlContentWithGroq(
 
     return finalData;
   } catch (error) {
+    console.error(
+      "❌ Background: Exception in analyzeHtmlContentWithGroq:",
+      error
+    );
     return null;
   }
 }
@@ -238,17 +256,32 @@ chrome.runtime.onMessage.addListener(
     console.log("🔔 Background: Received message:", message.type);
 
     if (message.type === "ANALYZE_HTML_CONTENT") {
+      console.log(
+        "🔔 Background: Starting AI analysis for URL:",
+        message.data.url
+      );
       const { htmlContent, url } = message.data;
 
       analyzeHtmlContentWithGroq(htmlContent, url)
         .then((propertyData) => {
+          console.log("✅ Background: AI analysis completed:", !!propertyData);
           sendResponse({ propertyData });
         })
         .catch((error) => {
+          console.error("❌ Background: AI analysis failed:", error);
           sendResponse({ error: error.message });
         });
 
       return true; // Keep message channel open for async response
+    }
+
+    if (message.type === "CONTENT_SCRIPT_LOADED") {
+      console.log(
+        "🎯 Background: Content script loaded on:",
+        message.data?.url || "unknown"
+      );
+      sendResponse({ success: true });
+      return true;
     }
 
     if (message.type === "INITIATE_GOOGLE_AUTH") {
