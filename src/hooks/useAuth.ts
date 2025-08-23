@@ -1,5 +1,6 @@
 import { useEffect, useReducer } from "react";
 import type { User, Session } from "@supabase/supabase-js";
+import { supabase } from "../lib/supabase";
 
 export interface AuthState {
   user: User | null;
@@ -140,6 +141,35 @@ export const useAuth = () => {
     // Initial auth check
     checkAuthState();
 
+    // Listen for Supabase auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("🔔 Supabase auth event:", event, session);
+
+      if (event === "SIGNED_IN" && session) {
+        console.log("✅ User signed in via Supabase");
+        // Store session in Chrome storage for persistence
+        await chrome.storage.local.set({ session });
+
+        updateAuthState({
+          user: session.user,
+          session: session,
+          loading: false,
+        });
+        stopPolling();
+      } else if (event === "SIGNED_OUT") {
+        console.log("👋 User signed out via Supabase");
+        await chrome.storage.local.remove(["session"]);
+
+        updateAuthState({
+          user: null,
+          session: null,
+          loading: false,
+        });
+      }
+    });
+
     // Listen for storage changes (immediate detection)
     const storageListener = (changes: any) => {
       if (changes.session) {
@@ -153,94 +183,47 @@ export const useAuth = () => {
     // Cleanup on unmount
     return () => {
       stopPolling();
+      subscription.unsubscribe();
       chrome.storage.onChanged.removeListener(storageListener);
     };
   }, []);
 
   const signInWithGoogle = async () => {
     try {
-      console.log("🔐 Starting Chrome Identity OAuth...");
-      updateLoading(true);
-      startPolling(); // Start polling during auth process
+      console.log("🔐 Starting Google OAuth with Supabase...");
+      dispatch({ type: "SET_LOADING", payload: true });
+      startPolling();
 
-      // Use Chrome Identity API for popup-style OAuth
+      // Get the current extension's redirect URL dynamically
       const redirectUrl = chrome.identity.getRedirectURL();
-      console.log("🔗 Chrome redirect URL:", redirectUrl);
+      console.log("🔗 Using redirect URL:", redirectUrl);
 
-      // Build Supabase OAuth URL with Chrome's redirect URL
-      const authUrl = `https://ovdokgutixbjhmfqbwet.supabase.co/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(
-        redirectUrl
-      )}&access_type=offline&prompt=consent`;
-
-      console.log("🔐 Launching auth popup...");
-
-      // Launch interactive OAuth popup
-      const responseUrl = await chrome.identity.launchWebAuthFlow({
-        url: authUrl,
-        interactive: true,
-      });
-
-      console.log("✅ OAuth response URL:", responseUrl);
-
-      if (!responseUrl) {
-        throw new Error("OAuth cancelled by user");
-      }
-
-      // Parse tokens from the response URL
-      const url = new URL(responseUrl);
-      const fragment = url.hash.substring(1);
-      const params = new URLSearchParams(fragment);
-
-      const accessToken = params.get("access_token");
-      const refreshToken = params.get("refresh_token");
-
-      if (!accessToken || !refreshToken) {
-        throw new Error("Failed to get OAuth tokens");
-      }
-
-      console.log("🎉 Got OAuth tokens, storing session...");
-
-      // Decode JWT token for user info
-      const payload = JSON.parse(atob(accessToken.split(".")[1]));
-      console.log("🔍 Token payload:", payload);
-
-      // Create session object
-      const session: any = {
-        access_token: accessToken,
-        refresh_token: refreshToken,
-        user: {
-          id: payload.sub,
-          email: payload.email,
-          user_metadata: payload.user_metadata || {},
-          app_metadata: payload.app_metadata || {},
+      // Use Supabase's built-in OAuth with the dynamic redirect URL
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
         },
-        expires_at: payload.exp * 1000,
-      };
-
-      // Store session
-      await new Promise<void>((resolve) => {
-        chrome.storage.local.set({ session }, () => {
-          resolve();
-        });
       });
 
-      console.log("✅ User signed in successfully");
-      console.log("👤 User object:", session.user);
-      console.log("🔄 Setting auth state...");
+      if (error) {
+        throw error;
+      }
 
-      updateAuthState({
-        user: session.user,
-        session: session,
-        loading: false,
-      });
+      console.log("✅ OAuth initiated successfully");
+      console.log("🔗 OAuth URL:", data.url);
 
-      console.log("✅ Auth state updated");
-
-      return { data: { success: true }, error: null };
+      // The auth state will be updated automatically by the auth listener
+      // No need to manually update state here
     } catch (error) {
-      console.error("Sign in error:", error);
-      updateLoading(false);
-      return { data: null, error };
+      console.log("Sign in error:", error);
+      dispatch({ type: "SET_LOADING", payload: false });
+      stopPolling();
+      throw error;
     }
   };
 

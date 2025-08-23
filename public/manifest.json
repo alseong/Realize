@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Real Estate Investment Calculator",
-  "version": "4.0.3",
+  "version": "4.0.4",
   "description": "Analyze real estate listings with AI-powered financial calculations",
   "permissions": ["activeTab", "storage", "tabs", "scripting", "identity"],
   "host_permissions": ["<all_urls>", "https://*.supabase.co/*"],

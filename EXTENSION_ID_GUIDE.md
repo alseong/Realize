@@ -1,70 +1,98 @@
-# How to Find Your Chrome Extension ID
+# Chrome Extension OAuth Setup Guide
 
-## Step 1: Load Your Extension
+## 🚨 **IMPORTANT: OAuth Configuration for Production**
 
-1. Build your extension: `npm run build`
-2. Open Chrome and go to `chrome://extensions/`
-3. Enable "Developer mode" (top right toggle)
-4. Click "Load unpacked" and select your `dist` folder
-5. Your extension will appear in the list
+When you publish your extension to Chrome Web Store, Google assigns a **new extension ID**. This breaks OAuth because the redirect URLs change.
 
-## Step 2: Find Your Extension ID
+## Step 1: Find Your Extension IDs
 
-Look at your extension in the list - you'll see an ID like:
+### Local Development ID:
 
-- `abcdefghijklmnopqrstuvwxyz123456`
-- `chrome-extension://abcdefghijklmnopqrstuvwxyz123456`
+1. Build: `npm run build`
+2. Go to `chrome://extensions/`
+3. Enable "Developer mode"
+4. Load your `dist` folder
+5. Copy the extension ID (e.g., `fhlkhckjdbmcgbignfjdjfdepcknmlej`)
 
-**Copy this ID!**
+### Published Extension ID:
 
-## Step 3: Update the Proxy Security
+1. After publishing to Chrome Web Store
+2. Install your published extension
+3. Go to `chrome://extensions/`
+4. Copy the new extension ID
 
-Update `groq-proxy/api/analyze-html.js` with your actual extension ID:
+## Step 2: Update Supabase OAuth Settings
+
+In your Supabase dashboard:
+
+1. Go to **Authentication** → **URL Configuration**
+2. Add **BOTH** redirect URLs to "Redirect URLs":
+   ```
+   https://fhlkhckjdbmcgbignfjdjfdepcknmlej.chromiumapp.org/
+   https://YOUR_PUBLISHED_EXTENSION_ID.chromiumapp.org/
+   ```
+
+## Step 3: Update Google Cloud OAuth Settings
+
+In Google Cloud Console:
+
+1. Go to **APIs & Services** → **Credentials**
+2. Edit your OAuth 2.0 Client ID
+3. Add **BOTH** redirect URIs to "Authorized redirect URIs":
+   ```
+   https://ovdokgutixbjhmfqbwet.supabase.co/auth/v1/callback
+   https://fhlkhckjdbmcgbignfjdjfdepcknmlej.chromiumapp.org/
+   https://YOUR_PUBLISHED_EXTENSION_ID.chromiumapp.org/
+   ```
+
+## Step 4: Update API Security (Optional)
+
+If you're using the Groq proxy, update `groq-proxy/api/analyze-html.js`:
 
 ```javascript
 const allowedOrigins = [
-  "chrome-extension://abcdefghijklmnopqrstuvwxyz123456", // Replace with your actual ID
-  "moz-extension://abcdefghijklmnopqrstuvwxyz123456", // if supporting Firefox
+  "chrome-extension://fhlkhckjdbmcgbignfjdjfdepcknmlej", // Local dev
+  "chrome-extension://YOUR_PUBLISHED_EXTENSION_ID", // Published
 ];
 ```
 
-## Step 4: Redeploy the Proxy
+Then redeploy:
 
 ```bash
 cd groq-proxy
 npx vercel --prod
 ```
 
-## Step 5: Test Security
+## ✅ **Why This Works:**
 
-Try calling your API from a browser console:
+- **Dynamic Redirect URLs**: The code uses `chrome.identity.getRedirectURL()` to automatically get the correct URL
+- **Multiple Configurations**: Both Supabase and Google accept multiple redirect URLs
+- **Seamless Switching**: Works for both development and production without code changes
 
-```javascript
-fetch("https://realize-ten.vercel.app/api/analyze-html", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ htmlContent: "test", url: "https://example.com" }),
-});
-```
+## 🔧 **Troubleshooting:**
 
-**This should return a 403 Forbidden error** because it's not coming from your extension.
+**"Invalid Redirect" Error:**
 
-## Security Benefits
+- Make sure you added BOTH extension IDs to Supabase and Google Cloud
+- Check that URLs end with `.chromiumapp.org/`
+- Wait a few minutes after updating settings
 
-✅ **Only your extension can call the API**  
-✅ **Prevents unauthorized usage**  
-✅ **Protects your API quota**  
-✅ **Blocks malicious requests**
+**"Authorization page could not be loaded":**
 
-## Troubleshooting
+- Verify the extension ID is correct
+- Check that OAuth is enabled in Supabase
+- Ensure Google Cloud project has the correct redirect URIs
 
-**If you get CORS errors:**
+**OAuth works locally but not in production:**
 
-- Make sure you're using the exact extension ID
-- Check that the ID includes the `chrome-extension://` prefix
-- Redeploy after updating the ID
+- This is exactly the issue we're solving!
+- Follow steps 2-3 above to add the published extension ID
 
-**If you get 403 errors from your extension:**
+## 📝 **Quick Checklist:**
 
-- Double-check the extension ID is correct
-- Make sure you're using the full ID with prefix
+- [ ] Found local extension ID
+- [ ] Found published extension ID (after publishing)
+- [ ] Added both IDs to Supabase redirect URLs
+- [ ] Added both IDs to Google Cloud redirect URIs
+- [ ] Updated API security (if applicable)
+- [ ] Tested both local and published versions
